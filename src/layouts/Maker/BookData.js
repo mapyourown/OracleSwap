@@ -1,0 +1,148 @@
+import React, { Component } from 'react'
+import PropTypes from 'prop-types'
+import { drizzleConnect } from 'drizzle-react'
+import Book from './../../../build/contracts/Book.json'
+
+class BookData extends Component {
+  constructor(props, context) {
+    super(props);
+    this.contracts = context.drizzle.contracts
+    this.drizzle = context.drizzle
+    this.bookKey = this.contracts.SwapMarket.methods.books.cacheCall(this.props.account)
+    this.lookupBook = this.lookupBook.bind(this)
+    this.bookIterate = this.bookIterate.bind(this)
+    this.bookPopulate = this.bookPopulate.bind(this)
+
+    this.bookSubcontractKeys = {}
+
+    this.state = {
+      bookAddress: '',
+      test: ''
+    }
+  }
+
+  lookupBook() {
+    console.log(this.props.SwapMarket)
+    if(!(this.bookKey in this.props.SwapMarket.books))
+      return
+
+    var config = {
+      contractName: 'Book',
+      web3Contract: new this.drizzle.web3.eth.Contract(Book.abi, this.props.SwapMarket.books[this.bookKey].value)
+    }
+    this.drizzle.addContract(config)
+    this.drizzle.contracts.Book.methods.head().call().then(function (result) {
+      var iter = result;
+      console.log('head', iter)
+      this.bookIterate(iter, []);
+    }.bind(this))
+  }
+
+  bookIterate(iter, ids) {
+    if (iter === "0x0000000000000000000000000000000000000000000000000000000000000000")
+    {
+      this.bookPopulate(ids)
+      return;
+    }
+    ids.push(iter)
+    this.drizzle.contracts.Book.methods.getNode(iter).call().then(function (result) {
+      var nextIter = result.next;
+        console.log('in iterate',nextIter);
+        this.bookIterate(nextIter, ids)
+    }.bind(this));
+  }
+
+  async bookPopulate (ids) {
+    for (const id of ids) {
+      const key = await this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(id)
+      this.bookSubcontractKeys[id] = key
+      this.setState({test: 'finished pop'})
+      console.log('changed state')
+    }
+  }
+
+  render() {
+
+    console.log('heartbeat')
+    console.log('state', this.drizzle.store.getState())
+    console.log('props', this.props.SwapMarket)
+
+    var bookSubcontracts = {}
+    var state = this.drizzle.store.getState()
+    Object.keys(this.bookSubcontractKeys).forEach(function (id) {
+      var key = this.bookSubcontractKeys[id]
+      if (state.contracts.Book)
+      {
+        if (key in state.contracts.Book.getSubcontract)
+          bookSubcontracts[id] = (state.contracts.Book.getSubcontract[key].value)
+      }
+    }, this)
+
+    // If the data isn't here yet, show loading
+    if(!(this.bookKey in this.props.SwapMarket.books)) {
+      return (
+        <span>Loading...</span>
+      )
+    }
+
+    // If the data is here, get it and display it
+    var pendingSpinner = this.props.SwapMarket.synced ? '' : ' 🔄'
+    //const noBook = "0x0000000000000000000000000000000000000000"
+    var bookAddr = this.props.SwapMarket.books[this.bookKey].value
+    
+    return (
+      <div>
+        <strong>Book Address: </strong> {bookAddr}{pendingSpinner}
+        <DisplaySubcontracts subcontracts={bookSubcontracts}/>
+        <button className="pure-button" type="button" onClick={this.lookupBook}> Show All Book Info </button>
+      </div>
+    )
+  }
+}
+
+function DisplaySubcontracts(props) {
+  const listitems = Object.keys(props.subcontracts).map( function(id) {
+    var side;
+    var rmAmount = props.subcontracts[id].reqMargin/1e18;
+    var takerMarginAmount = props.subcontracts[id].takerMargin/1e18;
+    var status = "Ongoing";
+    if (props.subcontracts[id].side)
+      side = "Long"
+    else
+      side = "Short"
+
+    if (props.subcontracts[id].isCancelled)
+      status = "Cancelled"
+    if (props.subcontracts[id].isBurned)
+      status = "Burned"
+
+    return(
+        <li key={id.toString()}>
+          <p>Subcontract ID: {id}</p>
+          <p>Required Margin: {rmAmount}</p>
+          <p>LP: {props.subcontracts[id].maker}</p>
+          <p>Taker: {props.subcontracts[id].taker}</p>
+          <p>Required Margin: {rmAmount}</p>
+          <p>Taker Margin: {takerMarginAmount}</p>
+          <p>LP Side: {side}</p>
+          <p>First Day ID: {props.subcontracts[id].initialDay}</p>
+          <p>Status: {status}</p>
+        </li>
+      );
+  });
+  return (
+    <ul>{listitems}</ul>
+  );
+}
+
+BookData.contextTypes = {
+  drizzle: PropTypes.object
+}
+
+const mapStateToProps = state => {
+  return {
+    SwapMarket: state.contracts.SwapMarket
+  }
+}
+
+export default drizzleConnect(BookData, mapStateToProps)
