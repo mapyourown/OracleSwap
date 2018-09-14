@@ -1,6 +1,4 @@
 import React, { Component } from 'react'
-import PropTypes from 'prop-types'
-import { drizzleConnect } from 'drizzle-react'
 import { 
   ContractForm,
    } from 'drizzle-react-components'
@@ -57,19 +55,20 @@ class Rates extends Component {
     )
   }
 }
+export default Rates
 
-Rates.contextTypes = {
+/*Rates.contextTypes = {
   drizzle: PropTypes.object
-}
+}*/
 
 /*
  * Export connected component.
  */
 
-const mapStateToProps = state => {
+/*const mapStateToProps = state => {
   return {
     contracts: state.contracts
   }
 }
 
-export default drizzleConnect(Rates, mapStateToProps)
+export default drizzleConnect(Rates, mapStateToProps)*/

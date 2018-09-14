@@ -1,10 +1,10 @@
 import React, { Component } from 'react'
-import PropTypes from 'prop-types'
-import { drizzleConnect } from 'drizzle-react'
 
 class Margins extends Component {
   constructor(props, context) {
     super(props);
+    //console.log(props)
+    //console.log(context)
     this.contracts = context.drizzle.contracts
     this.marginKey = this.contracts.SwapMarket.methods.openMargins.cacheCall(this.props.account)
     this.state = {
@@ -30,27 +30,27 @@ class Margins extends Component {
     var amount = this.state.toIncrease*1e18
     var stackID = this.contracts.SwapMarket.methods.increaseOpenMargin.cacheSend(amount, {value: amount})
     console.log('stackID', stackID)
-    //this.setState({toIncrease: ''})
+    this.setState({toIncrease: ''})
   }
 
   decreaseMargin() {
     var amount = this.state.toDecrease*1e18
     var stackID = this.contracts.SwapMarket.methods.reduceOpenMargin.cacheSend(amount)
     console.log('stackID', stackID)
-    //this.setState({toDecrease: ''})
+    this.setState({toDecrease: ''})
   }
 
   render() {
     // If the data isn't here yet, show loading
-    if(!(this.marginKey in this.props.SwapMarket.openMargins)) {
+    if(!(this.marginKey in this.props.contracts.SwapMarket.openMargins)) {
       return (
         <span>Loading...</span>
       )
     }
 
     // If the data is here, get it and display it
-    var data = this.props.SwapMarket.openMargins[this.marginKey].value/1e18
-    var pendingSpinner = this.props.SwapMarket.synced ? '' : ' 🔄'
+    var data = this.props.contracts.SwapMarket.openMargins[this.marginKey].value/1e18
+    var pendingSpinner = this.props.contracts.SwapMarket.synced ? '' : ' 🔄'
     
     return (
       <div>
@@ -72,15 +72,17 @@ class Margins extends Component {
     )
   }
 }
+
+export default Margins
 //<ContractData contract="SwapMarket" method="openMargins" methodArgs={[this.props.account]} />
-Margins.contextTypes = {
+/*Margins.contextTypes = {
   drizzle: PropTypes.object
 }
 
 const mapStateToProps = state => {
   return {
-    SwapMarket: state.contracts.SwapMarket
+    contracts: state.contracts
   }
 }
 
-export default drizzleConnect(Margins, mapStateToProps)
+export default drizzleConnect(Margins, mapStateToProps) */

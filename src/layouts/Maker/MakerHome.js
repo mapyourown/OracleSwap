@@ -6,9 +6,9 @@ import {
   ContractForm,
   AccountData
    } from 'drizzle-react-components'
-import BookData from './BookData'
-import Margins from './Margins'
-import Rates from './Rates'
+import BookDataContainer from './BookDataContainer'
+import MarginsContainer from './MarginsContainer'
+import RatesContainer from './RatesContainer'
 
 class MakerHome extends Component {
   constructor(props, context) {
@@ -47,13 +47,13 @@ class MakerHome extends Component {
 		  		<div className="pure-u-1-1">
 		        <h2>Active Account</h2>
 		        <AccountData accountIndex="0" units="ether" precision="3" />
-		        <BookData account={this.props.accounts[0]}/>
+		        <BookDataContainer account={this.props.accounts[0]}/>
 	      	</div>	
 
 	      	<div className="pure-u-1-1">
-            <Margins account={this.props.accounts[0]}/>
+            <MarginsContainer account={this.props.accounts[0]}/>
             <br/>
-            <Rates account={this.props.accounts[0]} />
+            <RatesContainer account={this.props.accounts[0]} />
           </div>
 
           <div className="pure-u-1-1">

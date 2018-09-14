@@ -1,6 +1,4 @@
 import React, { Component } from 'react'
-import PropTypes from 'prop-types'
-import { drizzleConnect } from 'drizzle-react'
 import Book from './../../../build/contracts/Book.json'
 
 class BookData extends Component {
@@ -22,13 +20,13 @@ class BookData extends Component {
   }
 
   lookupBook() {
-    console.log(this.props.SwapMarket)
-    if(!(this.bookKey in this.props.SwapMarket.books))
+    console.log(this.props.contracts.SwapMarket)
+    if(!(this.bookKey in this.props.contracts.SwapMarket.books))
       return
 
     var config = {
       contractName: 'Book',
-      web3Contract: new this.drizzle.web3.eth.Contract(Book.abi, this.props.SwapMarket.books[this.bookKey].value)
+      web3Contract: new this.drizzle.web3.eth.Contract(Book.abi, this.props.contracts.SwapMarket.books[this.bookKey].value)
     }
     this.drizzle.addContract(config)
     this.drizzle.contracts.Book.methods.head().call().then(function (result) {
@@ -63,9 +61,9 @@ class BookData extends Component {
 
   render() {
 
-    console.log('heartbeat')
-    console.log('state', this.drizzle.store.getState())
-    console.log('props', this.props.SwapMarket)
+    //console.log('heartbeat')
+    //console.log('state', this.drizzle.store.getState())
+    //console.log('props', this.props.SwapMarket)
 
     var bookSubcontracts = {}
     var state = this.drizzle.store.getState()
@@ -79,16 +77,16 @@ class BookData extends Component {
     }, this)
 
     // If the data isn't here yet, show loading
-    if(!(this.bookKey in this.props.SwapMarket.books)) {
+    if(!(this.bookKey in this.props.contracts.SwapMarket.books)) {
       return (
         <span>Loading...</span>
       )
     }
 
     // If the data is here, get it and display it
-    var pendingSpinner = this.props.SwapMarket.synced ? '' : ' 🔄'
+    var pendingSpinner = this.props.contracts.SwapMarket.synced ? '' : ' 🔄'
     //const noBook = "0x0000000000000000000000000000000000000000"
-    var bookAddr = this.props.SwapMarket.books[this.bookKey].value
+    var bookAddr = this.props.contracts.SwapMarket.books[this.bookKey].value
     
     return (
       <div>
@@ -135,7 +133,9 @@ function DisplaySubcontracts(props) {
   );
 }
 
-BookData.contextTypes = {
+export default BookData
+
+/*BookData.contextTypes = {
   drizzle: PropTypes.object
 }
 
@@ -145,4 +145,4 @@ const mapStateToProps = state => {
   }
 }
 
-export default drizzleConnect(BookData, mapStateToProps)
+export default drizzleConnect(BookData, mapStateToProps)*/
