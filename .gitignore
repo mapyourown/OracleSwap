@@ -1,0 +1,6 @@
+
+# ignore the build output
+build/
+
+# ignore npm cache
+/node_modules/.cache/
