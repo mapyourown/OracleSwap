@@ -19,6 +19,7 @@ contract MultiOracle {
     Asset[] public assets;
     uint[8][] private prices;
     uint[8][] private lastWeekPrices;
+    mapping(address => bool) public readers;
     
     modifier onlyAdmin()
     {
@@ -35,6 +36,13 @@ contract MultiOracle {
         admin = msg.sender;
         // first asset is always ETH
         addAsset("ETH", ethPrice, ethBasis, ethVol);
+    }
+
+    function addReader(address newReader)
+        public
+    {
+        require (msg.sender == admin);
+        readers[newReader] = true;
     }
     
     function addAsset(bytes32 _name, uint _price, int16 _basis, uint _vol)
@@ -132,11 +140,15 @@ contract MultiOracle {
     function getPrices(uint id)
         public
         view
-        onlyAdmin
         returns (uint[8] current, uint[8] previous)
     {
+        require (msg.sender == admin || readers[msg.sender])
         current = prices[id];
         previous = lastWeekPrices[id];
     }
 
+    function changeAdmin(address newAdmin) public {
+        require (msg.sender == admin);
+        admin = newAdmin;
+    }
 }
