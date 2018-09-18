@@ -6,7 +6,7 @@ import {
   AccountData
    } from 'drizzle-react-components'
 
-class MakerHome extends Component {
+class OracleHome extends Component {
   constructor(props, context) {
     super(props);
     console.log('props', props);
@@ -108,4 +108,4 @@ class MakerHome extends Component {
   }
 }
 
-export default MakerHome
+export default OracleHome

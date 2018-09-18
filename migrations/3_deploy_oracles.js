@@ -1,14 +1,26 @@
 var OracleFactory = artifacts.require("./OracleFactory.sol");
 var Oracle = artifacts.require("./Oracle.sol");
 var SwapMarket = artifacts.require("./SwapMarket.sol");
+var MultiOracle = artifacts.require("./MultiOracle.sol")
 
 module.exports = function(deployer, network, accounts) {
   // Set up the oracle deployment
 	var admin = accounts[0];
 	var reader = accounts[0];
 	console.log("Reader:", reader);
-	var eth, usv, spx, btc, verifier;
+	var eth, usv, spx, btc, verifier, multi;
 	var factory;
+
+	/*deployer.then(function () {
+		return deployer.deploy(MultiOracle, 200, 4, 50);
+	}).then(function (instance)
+		multi = instance;
+		//SPX
+		return multi.addAsset('0x535058', 2000, 2, 10);
+	}).then(function () {
+		//BTC
+		return multi.addAsset('0x425443', 6500, 3, 40);
+	});*/
 
 	deployer.then(function () {
 		return deployer.deploy(OracleFactory);
@@ -48,6 +60,14 @@ module.exports = function(deployer, network, accounts) {
 	}).then(function (result) {
 		return deployer.deploy(SwapMarket, eth.address, usv.address, spx.address)
 	}).then(function (instance) {
+		return deployer.deploy(MultiOracle, 200, 4, 50)
+	}).then(function (instance) {
+		multi = instance;
+		//SPX
+		return multi.addAsset('0x535058', 2000, 2, 10);
+	}).then (function () {
+		return multi.addAsset('0x425443', 6500, 3, 40);
+	}).then(function () {
 		console.log("Finished");
 	});
 };

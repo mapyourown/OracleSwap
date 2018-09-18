@@ -10,6 +10,7 @@ import HomeContainer from './layouts/home/HomeContainer'
 import MakerHomeContainer from './layouts/Maker/MakerHomeContainer'
 import TakerHomeContainer from './layouts/Taker/TakerHomeContainer'
 import OracleHomeContainer from './layouts/Oracle/OracleHomeContainer'
+import MultiOracleContainer from './layouts/Oracle/MultiOracleContainer'
 import { LoadingContainer } from 'drizzle-react-components'
 
 import store from './store'
@@ -33,6 +34,9 @@ ReactDOM.render((
           </Route>
           <Route path="/oracle" component={App}>
             <IndexRoute component={OracleHomeContainer} />
+          </Route>
+          <Route path="/multi" component={App}>
+            <IndexRoute component={MultiOracleContainer} />
           </Route>
         </Router>
       </LoadingContainer>

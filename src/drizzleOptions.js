@@ -3,6 +3,7 @@ import SimpleStorage from './../build/contracts/SimpleStorage.json'
 import TutorialToken from './../build/contracts/TutorialToken.json'
 import Oracle from './../build/contracts/Oracle.json'
 import SwapMarket from './../build/contracts/SwapMarket.json'
+import MuliOracle from './../build/contracts/MultiOracle.json'
 import Web3 from 'web3'
 const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
 
@@ -24,6 +25,7 @@ const drizzleOptions = {
     ComplexStorage,
     SimpleStorage,
     TutorialToken,
+    MuliOracle,
     SwapMarket,
     {
       contractName: 'ETH_Oracle',
