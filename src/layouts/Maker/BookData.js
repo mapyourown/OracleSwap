@@ -12,10 +12,12 @@ class BookData extends Component {
     this.bookPopulate = this.bookPopulate.bind(this)
 
     this.bookSubcontractKeys = {}
+    this.bookLPMarginKey = ''
 
     this.state = {
       bookAddress: '',
-      test: ''
+      test: '',
+      bookStatus: ''
     }
   }
 
@@ -23,6 +25,7 @@ class BookData extends Component {
     console.log(this.props.contracts.SwapMarket)
     if(!(this.bookKey in this.props.contracts.SwapMarket.books))
       return
+    this.setState({bookStatus: 'Retrieving Data'})
 
     var config = {
       contractName: 'Book',
@@ -34,6 +37,8 @@ class BookData extends Component {
       console.log('head', iter)
       this.bookIterate(iter, []);
     }.bind(this))
+    const marginKey = this.drizzle.contracts.Book.methods.ownerMargin.cacheCall()
+    this.bookLPMarginKey = marginKey
   }
 
   bookIterate(iter, ids) {
@@ -41,6 +46,7 @@ class BookData extends Component {
     {
       this.bookPopulate(ids)
       return;
+      this.setState({bookStatus: 'Data Retreived'})
     }
     ids.push(iter)
     this.drizzle.contracts.Book.methods.getNode(iter).call().then(function (result) {
@@ -59,6 +65,8 @@ class BookData extends Component {
     }
   }
 
+
+
   render() {
 
     //console.log('heartbeat')
@@ -72,7 +80,11 @@ class BookData extends Component {
       if (state.contracts.Book)
       {
         if (key in state.contracts.Book.getSubcontract)
+        {
           bookSubcontracts[id] = (state.contracts.Book.getSubcontract[key].value)
+          bookSubcontracts[id].maker = this.props.account
+        }
+
       }
     }, this)
 
@@ -83,6 +95,15 @@ class BookData extends Component {
       )
     }
 
+    var bookMargin = 0;
+    if (state.contracts.Book)
+    {
+      if (this.bookLPMarginKey in state.contracts.Book.ownerMargin)
+      {
+        bookMargin = state.contracts.Book.ownerMargin[this.bookLPMarginKey].value/1e18
+      }
+    }
+
     // If the data is here, get it and display it
     var pendingSpinner = this.props.contracts.SwapMarket.synced ? '' : ' 🔄'
     //const noBook = "0x0000000000000000000000000000000000000000"
@@ -91,6 +112,10 @@ class BookData extends Component {
     return (
       <div>
         <strong>Book Address: </strong> {bookAddr}{pendingSpinner}
+        <br/>
+        <span>{this.bookStatus}</span>
+        <br/>
+        <span>Book Margin: {bookMargin == 0 ? "Waiting for Book" : bookMargin}</span>
         <DisplaySubcontracts subcontracts={bookSubcontracts}/>
         <button className="pure-button" type="button" onClick={this.lookupBook}> Show All Book Info </button>
       </div>

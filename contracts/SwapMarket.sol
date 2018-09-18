@@ -328,7 +328,7 @@ contract SwapMarket {
     {
         require(books[owner] != 0x0);
         Book b = Book(books[owner]);
-        b.takerWithdrawal(id, AssetOracle.lastWeeklyTime(), amount, msg.sender);
+        b.takerWithdrawal(id, amount, msg.sender);
     }
     
     function ownerMarginWithdrawal(uint amount)
@@ -349,6 +349,7 @@ contract SwapMarket {
     }
 
     function pause(bool newPaused)
+        public
         onlyAdmin
     {
         isPaused = newPaused;

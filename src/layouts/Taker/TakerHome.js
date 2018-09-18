@@ -179,7 +179,6 @@ function DisplaySubcontracts(props) {
     return(
         <li key={id.toString()}>
           <p>Subcontract ID: {id}</p>
-          <p>Required Margin: {rmAmount}</p>
           <p>LP: {props.subcontracts[id].maker}</p>
           <p>Taker: {props.subcontracts[id].taker}</p>
           <p>Required Margin: {rmAmount}</p>

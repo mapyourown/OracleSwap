@@ -97,6 +97,7 @@ function DisplayMakers(props) {
 }
 
 function DisplayActiveBooks(props) {
+  const openFee = 0.025
   const listitems = Object.keys(props.activeBooks).map( function(maker)  {
     if (props.activeBooks[maker].bookAddress && props.activeBooks[maker].rates
      && props.activeBooks[maker].margin && props.activeBooks[maker].bookData)
@@ -106,7 +107,7 @@ function DisplayActiveBooks(props) {
         <li key={maker.toString()}>
           <p>LP: {maker}</p>
           <p>Book: {props.activeBooks[maker].bookAddress}</p>
-          <p>Open Margin: {props.activeBooks[maker].margin/(1e18)} ETH</p>
+          <p>Open Margin: {(props.activeBooks[maker].margin/(1e18))/(1+ openFee)} ETH</p>
           <p>Current Long Rate: {props.activeBooks[maker].rates['currentLong']}</p>
           <p>Current Short Rate: {props.activeBooks[maker].rates['currentShort']}</p>
           <p>Next Long Rate: {props.activeBooks[maker].rates['nextLong']}</p>

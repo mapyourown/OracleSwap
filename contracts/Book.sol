@@ -363,13 +363,11 @@ contract Book {
 		node.k.isBurned = true;
     }
     
-    function takerWithdrawal(bytes32 id, uint priceTime, uint amount, address sender)
+    function takerWithdrawal(bytes32 id, uint amount, address sender)
         public
         onlyAdmin
     {
-        require(lastSettleTime > priceTime);
         LinkedListNode storage node = nodes[id];
-        require(sender == node.k.Taker);
         require(node.k.TakerMargin >= node.k.ReqMargin.add(amount));
         node.k.TakerMargin = node.k.TakerMargin.sub(amount);
         balances[sender] = balances[sender].add(amount);
