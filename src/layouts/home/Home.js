@@ -1,12 +1,4 @@
 import React, { Component } from 'react'
-import { 
-  // AccountData,
-  ContractData,
-  ContractForm,
-   } from 'drizzle-react-components'
-import ShowPNLForm from './../ShowPNL/ShowPNLForm.js'
-import RatesForm from './../Rates/RatesForm.js'
-import Book from './../../../build/contracts/Book.json'
 //import logo from '../../logo.png'
 
 
@@ -32,7 +24,7 @@ class Home extends Component {
               <li><a href="/">Home</a></li>
               <li><a href="/make">Liquidity Provider Page</a></li>
               <li><a href="/take">Taker Page </a></li>
-              <li><a href="/oracle">Oracle Page</a></li>
+              <li><a href="/oracle">Show Oracle</a></li>
               <li><a href="/multi">Admin Page</a></li>
             </ul>
           </div>          

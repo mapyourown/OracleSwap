@@ -1,6 +1,5 @@
 import React, { Component } from 'react'
 import { 
-  ContractData,
   ContractForm,
   AccountData
    } from 'drizzle-react-components'

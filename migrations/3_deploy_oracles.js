@@ -8,21 +8,23 @@ module.exports = function(deployer, network, accounts) {
 	var admin = accounts[0];
 	var reader = accounts[0];
 	console.log("Reader:", reader);
-	var eth, usv, spx, btc, verifier, multi;
-	var factory;
-
-	/*deployer.then(function () {
-		return deployer.deploy(MultiOracle, 200, 4, 50);
-	}).then(function (instance)
-		multi = instance;
-		//SPX
-		return multi.addAsset('0x535058', 2000, 2, 10);
-	}).then(function () {
-		//BTC
-		return multi.addAsset('0x425443', 6500, 3, 40);
-	});*/
+	//var eth, usv, spx, btc, verifier, multi;
+	var oracle;
+	//var factory;
 
 	deployer.then(function () {
+		return deployer.deploy(MultiOracle, 200, 4, 50);
+	}).then(function(instance) {
+		oracle = instance;
+		return oracle.addAsset('0x535058', 2000, 2, 10);
+	}).then(function () {
+		//BTC
+		return oracle.addAsset('0x425443', 6500, 3, 40);
+	}).then(function (result) {
+		return deployer.deploy(SwapMarket, oracle.address, 0);
+	});
+
+	/*deployer.then(function () {
 		return deployer.deploy(OracleFactory);
 	}).then(function(instance) {
 		factory = instance;
@@ -69,5 +71,5 @@ module.exports = function(deployer, network, accounts) {
 		return multi.addAsset('0x425443', 6500, 3, 40);
 	}).then(function () {
 		console.log("Finished");
-	});
+	});*/
 };

@@ -45,8 +45,8 @@ class BookData extends Component {
     if (iter === "0x0000000000000000000000000000000000000000000000000000000000000000")
     {
       this.bookPopulate(ids)
-      return;
       this.setState({bookStatus: 'Data Retreived'})
+      return;
     }
     ids.push(iter)
     this.drizzle.contracts.Book.methods.getNode(iter).call().then(function (result) {
@@ -115,7 +115,7 @@ class BookData extends Component {
         <br/>
         <span>{this.bookStatus}</span>
         <br/>
-        <span>Book Margin: {bookMargin == 0 ? "Waiting for Book" : bookMargin}</span>
+        <span>Book Margin: {bookMargin === 0 ? "Waiting for Book" : bookMargin}</span>
         <DisplaySubcontracts subcontracts={bookSubcontracts}/>
         <button className="pure-button" type="button" onClick={this.lookupBook}> Show All Book Info </button>
       </div>

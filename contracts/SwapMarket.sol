@@ -1,16 +1,15 @@
 pragma solidity ^0.4.24;
 
 import "./Book.sol";
-import "./Oracle.sol";
+import "./MultiOracle.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract SwapMarket {
     
     using SafeMath for uint;
     
-    Oracle public ETHUSD;
-    Oracle public USEQVOL;
-    Oracle public AssetOracle;
+    MultiOracle public oracle;
+    uint public assetID;
 
     uint public minRM;
     uint8 public openFee;
@@ -59,11 +58,7 @@ contract SwapMarket {
         _;
     }
     
-    constructor (
-        address _ethoracle,
-        address _useqvoloracle,
-        address _assetoracle
-        )
+    constructor ( address _oracle, uint _assetID)
         public
     {
         admin = msg.sender;
@@ -80,9 +75,8 @@ contract SwapMarket {
         cancelFee = 3;
         burnFee = 5;
         
-        ETHUSD = Oracle(_ethoracle);
-        USEQVOL = Oracle(_useqvoloracle);
-        AssetOracle = Oracle(_assetoracle);
+        oracle = MultiOracle(_oracle);
+        assetID = _assetID;
 
         isPaused = false;
 
@@ -191,7 +185,10 @@ contract SwapMarket {
         if (books[owner] == 0x0)
             return;
         Book b = Book(books[owner]);
-        b.firstSettle(AssetOracle.currentDay());
+        uint8 currentDay;
+        ( , , , , currentDay, , , ) = oracle.assets(assetID);
+        b.firstSettle(currentDay);
+        //b.firstSettle(oracle.assets(assetID).currentDay);
     }
 
     function computeReturns()
@@ -211,16 +208,23 @@ contract SwapMarket {
         for (uint8 i = 0; i < numDays; i++)
         {
             // Do nothing if empty
-            if (AssetOracle.lastWeekPrices(i) == 0)
+            if (oracle.lastWeekPrices(i, assetID) == 0)
                 continue;
-            int assetReturn = (int(AssetOracle.getPrice().mul(1 ether)) / int(AssetOracle.lastWeekPrices(i))) - (1 ether);
-            int leveraged = assetReturn / int(USEQVOL.getPrice());
-            int pnl = (leveraged * int(ETHUSD.lastWeekPrices(i)))/int(ETHUSD.getPrice());
+            uint assetPrice;
+            (, , assetPrice) = oracle.getPrices(assetID);
+            uint volatility;
+            ( , , , , , , , volatility) = oracle.assets(i);
+            uint ethPrice;
+            (, , ethPrice) = oracle.getPrices(0);
+            int assetReturn = (int(assetPrice.mul(1 ether)) / int(oracle.lastWeekPrices(i, assetID))) - (1 ether);
+            int leveraged = assetReturn / int(volatility);
+            // use ETH prices
+            int pnl = (leveraged * int(oracle.lastWeekPrices(i, 0)))/int(ethPrice);
 
             dailyReturns[i] = pnl;
         }
         weeklyReturn = dailyReturns[0];
-        longProfited = (AssetOracle.getPrice() > AssetOracle.lastPrice());
+        longProfited = (assetPrice > oracle.lastWeekPrices(0, assetID));
     }
     
     function settle(address owner)
@@ -244,8 +248,9 @@ contract SwapMarket {
             settleRates[0] = rates[owner].currentLong;
             settleRates[1] = rates[owner].currentShort;
         }
-        
-        settleRates[2] = AssetOracle.basis();
+        int16 basis;
+        (, , , , , basis, , ) = oracle.assets(assetID);
+        settleRates[2] = basis;
         
         b.settle(dailyReturns, settleRates, longProfited);
         
@@ -265,7 +270,9 @@ contract SwapMarket {
         require(0 < longRate + shortRate);
         require(longRate + shortRate < 52);
         //require()
-        require(!AssetOracle.isFinalDay()); // Rates locked in by day before
+        bool finalDay;
+        (, finalDay, , , , , , ) = oracle.assets(assetID);
+        require(!finalDay); // Rates locked in by day before
         makerRates storage mRates = rates[msg.sender];
         mRates.nextLong = longRate;
         mRates.nextShort = shortRate;
@@ -285,7 +292,9 @@ contract SwapMarket {
         payable
     {
         Book b = Book(books[owner]);
-        b.cancel.value(msg.value)(AssetOracle.lastWeeklyTime(), id, msg.sender, openFee, cancelFee);
+        uint lastSettleTime;
+        (, , , lastSettleTime, , , , ) = oracle.assets(assetID);
+        b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, openFee, cancelFee);
     }
     
     function changeOwner(address _newOwner)

@@ -1,16 +1,14 @@
 import ComplexStorage from './../build/contracts/ComplexStorage.json'
 import SimpleStorage from './../build/contracts/SimpleStorage.json'
 import TutorialToken from './../build/contracts/TutorialToken.json'
-import Oracle from './../build/contracts/Oracle.json'
 import SwapMarket from './../build/contracts/SwapMarket.json'
 import MuliOracle from './../build/contracts/MultiOracle.json'
-import Web3 from 'web3'
-const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
+//const web3 = new Web3(Web3.givenProvider || "http://localhost:8545");
 
-var eth_address = '0xf2f9490c019d8f5e21c58fb45ed87a34d3585d6f'
+/*var eth_address = '0xf2f9490c019d8f5e21c58fb45ed87a34d3585d6f'
 var vix_address = '0x7cf532fa803a194b641b46340a2e33e9c40facdb'
 var spx_address = '0x6e97844bb668cde82ef38c74d4793743489afc73'
-var btc_address = '0x4d21c0dbc4f0ca5fb42102afc64c1a81b7e8ab54'
+var btc_address = '0x4d21c0dbc4f0ca5fb42102afc64c1a81b7e8ab54'*/
 
 
 const drizzleOptions = {
@@ -26,8 +24,8 @@ const drizzleOptions = {
     SimpleStorage,
     TutorialToken,
     MuliOracle,
-    SwapMarket,
-    {
+    SwapMarket
+    /*{
       contractName: 'ETH_Oracle',
       web3Contract: new web3.eth.Contract(Oracle.abi, eth_address)
     },
@@ -42,7 +40,7 @@ const drizzleOptions = {
     {
       contractName: 'BTC_Oracle',
       web3Contract: new web3.eth.Contract(Oracle.abi, btc_address)
-    }
+    }*/
 
   ],
   events: {

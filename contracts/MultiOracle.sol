@@ -8,8 +8,8 @@ contract MultiOracle {
         uint lastPriceUpdateTime;
         uint lastSettlePriceTime;
         uint8 currentDay;
-        uint[8] prices; // day 0 is wednesday
-        uint[8] lastWeekPrices;
+        //uint[8] prices; // day 0 is wednesday
+        //uint[8] lastWeekPrices;
         int16 currentBasis;
         int16 nextBasis;
         uint volatility;
@@ -18,7 +18,7 @@ contract MultiOracle {
     address public admin;
     Asset[] public assets;
     uint[8][] private prices;
-    uint[8][] private lastWeekPrices;
+    uint[8][] public lastWeekPrices;
     mapping(address => bool) public readers;
     
     modifier onlyAdmin()
@@ -61,7 +61,7 @@ contract MultiOracle {
         lastWeekPrices.push(_prices);
 		
         _prices[0] = _price;
-		asset.prices = _prices;
+		//asset.prices = _prices;
         asset.currentBasis = _basis;
         asset.nextBasis = _basis;
         asset.volatility = _vol;
@@ -79,7 +79,7 @@ contract MultiOracle {
     {
         Asset storage asset = assets[assetID];
         asset.currentDay = asset.currentDay + 1;
-        asset.prices[asset.currentDay] = price;
+        //asset.prices[asset.currentDay] = price;
         asset.isFinalDay = lastDay;
 
         prices[assetID][asset.currentDay] = price;
@@ -93,14 +93,14 @@ contract MultiOracle {
     {
         // TODO: add time definitions for no double update
         Asset storage asset = assets[assetID];
-        asset.lastWeekPrices = asset.prices;
+        //asset.lastWeekPrices = asset.prices;
 
         lastWeekPrices[assetID] = prices[assetID];
 
         asset.currentDay = 0;
         uint[8] memory newPrices;
         newPrices[0] = price;
-        asset.prices = newPrices;
+        //asset.prices = newPrices;
 
         prices[assetID] = newPrices;
 
@@ -116,7 +116,8 @@ contract MultiOracle {
     {
         Asset storage asset = assets[assetID];
         require(block.timestamp < asset.lastPriceUpdateTime + 15 minutes);
-        asset.prices[asset.currentDay] = newPrice;
+        //asset.prices[asset.currentDay] = newPrice;
+        prices[assetID][asset.currentDay] = newPrice;
         emit PriceCorrected(asset.name, newPrice);
     }
     
@@ -140,11 +141,12 @@ contract MultiOracle {
     function getPrices(uint id)
         public
         view
-        returns (uint[8] current, uint[8] previous)
+        returns (uint[8] current, uint[8] previous, uint currentPrice)
     {
-        require (msg.sender == admin || readers[msg.sender])
+        require (msg.sender == admin || readers[msg.sender]);
         current = prices[id];
         previous = lastWeekPrices[id];
+        currentPrice=prices[id][assets[id].currentDay];
     }
 
     function changeAdmin(address newAdmin) public {
