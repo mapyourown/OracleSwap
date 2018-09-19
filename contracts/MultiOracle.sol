@@ -27,10 +27,10 @@ contract MultiOracle {
         _;
     }
     
-    event PriceUpdated(bytes32 indexed _name, uint _price);
-    event BasisUpdated(bytes32 indexed _name, int16 _basis);
-    event AssetAdded(uint _id, bytes32 _name, uint _price, int16 _basis, uint _vol);
-    event PriceCorrected(bytes32 indexed _name, uint _price);
+    event PriceUpdated(uint indexed _id, bytes32 indexed _name, uint _price);
+    event BasisUpdated(uint indexed _id, bytes32 indexed _name, int16 _basis);
+    event AssetAdded(uint indexed _id, bytes32 _name, uint _price, int16 _basis, uint _vol);
+    event PriceCorrected(uint indexed _id, bytes32 indexed _name, uint _price);
     
     constructor (uint ethPrice, int16 ethBasis, uint ethVol) public {
         admin = msg.sender;
@@ -84,7 +84,7 @@ contract MultiOracle {
 
         prices[assetID][asset.currentDay] = price;
 
-        emit PriceUpdated(asset.name, price);
+        emit PriceUpdated(assetID, asset.name, price);
     }
     
     function setSettlePrice(uint assetID, uint price)
@@ -118,7 +118,7 @@ contract MultiOracle {
         require(block.timestamp < asset.lastPriceUpdateTime + 15 minutes);
         //asset.prices[asset.currentDay] = newPrice;
         prices[assetID][asset.currentDay] = newPrice;
-        emit PriceCorrected(asset.name, newPrice);
+        emit PriceCorrected(assetID, asset.name, newPrice);
     }
     
     function setBasis(uint assetID, int16 newBasis)
@@ -128,6 +128,7 @@ contract MultiOracle {
         Asset storage asset = assets[assetID];
         require(!asset.isFinalDay);
         asset.nextBasis = newBasis;
+        emit BasisUpdated(assetID, asset.name, newBasis);
     }
     
     function setVolatility(uint assetID, uint newVol)
