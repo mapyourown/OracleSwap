@@ -1,14 +1,14 @@
 import { drizzleConnect } from 'drizzle-react'
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
-import ShowPNL from './ShowPNL'
+import ShowPNL from '../ShowPNL/ShowPNL'
 import Book from './../../../build/contracts/Book.json'
 
 /*
  * Create component.
  */
 
-class ShowPNLForm extends Component {
+class MakerPNLForm extends Component {
   constructor(props, context) {
     super(props);
 
@@ -23,6 +23,7 @@ class ShowPNLForm extends Component {
     this.ethKey = this.contracts.MultiOracle.methods.assets.cacheCall(0)
     this.assetPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
     this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
+    this.bookKey = this.contracts.SwapMarket.methods.books.cacheCall(this.props.accounts[0])
     this.getOracleLogs = this.getOracleLogs.bind(this)
     this.priceHistory = {}
     this.getOracleLogs(this.assetID);
@@ -31,7 +32,6 @@ class ShowPNLForm extends Component {
     this.keys = {}
 
     this.state = {
-      makerAddress: '',
       bookAddress: '',
       finalAssetPrice: '',
       finalEthPrice: '',
@@ -70,6 +70,8 @@ class ShowPNLForm extends Component {
   }
 
   handleSubmit() {
+    if (this.bookKey in this.props.contracts.SwapMarket.books)
+      this.setState({bookAddress: this.props.contracts.SwapMarket.books[this.bookKey]})
   	var config = {
       contractName: 'Book',
       web3Contract: new this.drizzle.web3.eth.Contract(Book.abi, this.state.bookAddress)
@@ -78,7 +80,8 @@ class ShowPNLForm extends Component {
     this.keys = {};
     /*this.keys.basisKey = this.contracts.SPX_Oracle.methods.basis.cacheCall()*/
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
-    this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.state.makerAddress)
+    this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.props.accounts[0])
+    
     /*this.keys.assetPriceKey = this.contracts.SPX_Oracle.methods.getPrice.cacheCall()
     this.keys.assetPricesKey = this.contracts.SPX_Oracle.methods.getPrices.cacheCall()
     this.keys.ethPriceKey = this.contracts.ETH_Oracle.methods.getPrice.cacheCall()
@@ -151,17 +154,16 @@ class ShowPNLForm extends Component {
     if (this.ethPastKey in this.props.contracts.MultiOracle.getPastPrices)
       ethPastWeek = this.props.contracts.MultiOracle.getPastPrices[this.ethPastKey].value;
 
+
     return (
       <div>
         <ShowPNL assetData={assetData} ethData={ethData} rates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice} ethStart={this.state.startingEthPrice}
-          maker={this.state.makerAddress} id={this.state.subcontractID} />
+          maker={this.props.accounts[0]} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">
-          <input name="makerAddress" type="text" value={this.state.makerAddress} onChange={this.handleInputChange} placeholder="LP Address" />
-          <input name="bookAddress" type="text" value={this.state.bookAddress} onChange={this.handleInputChange} placeholder="Book Address" />
           <input name="subcontractID" type="text" value={this.state.subcontractID} onChange={this.handleInputChange} placeholder="Subcontract ID" />
           <input name="startingAssetPrice" type="text" value={this.state.startingAssetPrice} onChange={this.handleInputChange} placeholder="Start Asset Price (optional)" />
           <input name="startingEthPrice" type="text" value={this.state.startingEthPrice} onChange={this.handleInputChange} placeholder="Start ETH Price (optional)" />
@@ -174,7 +176,7 @@ class ShowPNLForm extends Component {
   }
 }
 
-ShowPNLForm.contextTypes = {
+MakerPNLForm.contextTypes = {
   drizzle: PropTypes.object
 }
 
@@ -184,8 +186,9 @@ ShowPNLForm.contextTypes = {
 
 const mapStateToProps = state => {
   return {
+    accounts: state.accounts,
     contracts: state.contracts
   }
 }
 
-export default drizzleConnect(ShowPNLForm, mapStateToProps)
+export default drizzleConnect(MakerPNLForm, mapStateToProps)

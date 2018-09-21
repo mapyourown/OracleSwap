@@ -29,7 +29,6 @@ class ShowPNL extends Component {
     }*/
 
     console.log('props', this.props)
-
     
     if(!this.props.subcontract || !this.props.rates || !this.props.assetWeek || !this.props.ethWeek) {
       return (
