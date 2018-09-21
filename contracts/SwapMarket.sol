@@ -186,7 +186,7 @@ contract SwapMarket {
             return;
         Book b = Book(books[owner]);
         uint8 currentDay;
-        ( , , , , currentDay, , , ) = oracle.assets(assetID);
+        ( , , , , currentDay, , , , , ) = oracle.assets(assetID);
         b.firstSettle(currentDay);
         //b.firstSettle(oracle.assets(assetID).currentDay);
     }
@@ -213,7 +213,7 @@ contract SwapMarket {
             uint assetPrice;
             (, , assetPrice) = oracle.getPrices(assetID);
             uint volatility;
-            ( , , , , , , , volatility) = oracle.assets(i);
+            ( , , , , , , , , volatility,) = oracle.assets(i);
             uint ethPrice;
             (, , ethPrice) = oracle.getPrices(0);
             int assetReturn = (int(assetPrice.mul(1 ether)) / int(oracle.lastWeekPrices(i, assetID))) - (1 ether);
@@ -249,7 +249,7 @@ contract SwapMarket {
             settleRates[1] = rates[owner].currentShort;
         }
         int16 basis;
-        (, , , , , basis, , ) = oracle.assets(assetID);
+        (, , , , , basis, , , , ) = oracle.assets(assetID);
         settleRates[2] = basis;
         
         b.settle(dailyReturns, settleRates, longProfited);
@@ -271,7 +271,7 @@ contract SwapMarket {
         require(longRate + shortRate < 52);
         //require()
         bool finalDay;
-        (, finalDay, , , , , , ) = oracle.assets(assetID);
+        (, finalDay, , , , , , , ,) = oracle.assets(assetID);
         require(!finalDay); // Rates locked in by day before
         makerRates storage mRates = rates[msg.sender];
         mRates.nextLong = longRate;
@@ -293,7 +293,7 @@ contract SwapMarket {
     {
         Book b = Book(books[owner]);
         uint lastSettleTime;
-        (, , , lastSettleTime, , , , ) = oracle.assets(assetID);
+        (, , , lastSettleTime, , , , , , ) = oracle.assets(assetID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, openFee, cancelFee);
     }
     
@@ -355,6 +355,13 @@ contract SwapMarket {
         uint amount = balances[msg.sender];
         balances[msg.sender] = 0;
         msg.sender.transfer(amount);
+    }
+
+    function balanceTransfer(address reciever)
+        public
+        payable
+    {
+        balances[reciever] = balances[msg.sender].add(msg.value);
     }
 
     function pause(bool newPaused)

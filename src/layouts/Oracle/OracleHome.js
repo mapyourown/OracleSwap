@@ -89,7 +89,7 @@ function DisplayAssetData(props) {
       <div>
         <h3>Name: {hex_to_ascii(data.name)} </h3>
         <p>ID: {data.id.toString()} </p>
-        <p>Volatility: {data.volatility}</p>
+        <p>Margin Rate: {data.currentMarginRate}</p>
         <p>Current Basis: {data.currentBasis}</p>
         <p>Next Basis: {data.nextBasis}</p>
         <p>Last Day?: {data.isFinalDay ? "Yes" : "No"}</p>

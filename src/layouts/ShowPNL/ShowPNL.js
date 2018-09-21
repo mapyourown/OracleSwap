@@ -27,8 +27,6 @@ class ShowPNL extends Component {
           <span> Waiting for Data </span>
       )
     }*/
-
-    console.log('props', this.props)
     
     if(!this.props.subcontract || !this.props.rates || !this.props.assetWeek || !this.props.ethWeek) {
       return (
@@ -73,7 +71,7 @@ class ShowPNL extends Component {
     // Settle computation
     var assetReturn = assetPrice*1.0/assetStart - 1
     var ethReturn = ethPrice/ethStart
-    var marginRate = this.props.assetData.volatility/100
+    var marginRate = this.props.assetData.currentMarginRate/100
     var ETHRawPNL = (rmAmount/marginRate) * assetReturn / ethReturn
     var pnl;
     var basisFee = basis*(1.0/1000)*rmAmount

@@ -16,10 +16,13 @@ module.exports = function(deployer, network, accounts) {
 		return deployer.deploy(MultiOracle, 200, 4, 50);
 	}).then(function(instance) {
 		oracle = instance;
-		return oracle.addAsset('0x535058', 2000, 2, 10);
+		return oracle.addAsset('0x535058', 2000, 2, 10); //SPX
 	}).then(function () {
 		//BTC
 		return oracle.addAsset('0x425443', 6500, 3, 40);
+	}).then(function () {
+		//BTC
+		return oracle.addAsset('0x4254432f455448', 30, 4, 25);
 	}).then(function (result) {
 		return deployer.deploy(SwapMarket, oracle.address, 0);
 	});

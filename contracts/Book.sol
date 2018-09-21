@@ -1,6 +1,7 @@
 pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./SwapMarket.sol";
 
 library Utils {
     using SafeMath for uint;
@@ -35,7 +36,7 @@ contract Book {
     uint public totalShortMargin;
     uint public totalNewMargin;
     
-    mapping(address => uint) public balances;
+    //mapping(address => uint) public balances;
 
     uint public numContracts;
     uint public burnFees;
@@ -157,7 +158,8 @@ contract Book {
         else
             totalShortMargin = totalShortMargin.sub(tMargin);
         }
-        balances[ll.k.Taker] = balances[ll.k.Taker].add(tMargin);
+        //balances[ll.k.Taker] = balances[ll.k.Taker].add(tMargin);
+        balanceSend(tMargin, ll.k.Taker);
             
         LinkedListNode memory blank;
         nodes[id] = blank;
@@ -289,7 +291,8 @@ contract Book {
             ownerMargin = ownerMargin.sub(toPayPend);
             uint tMargin = k_pend.TakerMargin;
             k_pend.TakerMargin = 0;
-            balances[k_pend.Taker] = balances[k_pend.Taker].add(tMargin + toPayPend);
+            //balances[k_pend.Taker] = balances[k_pend.Taker].add(tMargin + toPayPend);
+            balanceSend(tMargin + toPayPend, k_pend.Taker);
             LinkedListNode memory empty;
             nodes[pendingContracts[i]] = empty;
         }
@@ -339,7 +342,8 @@ contract Book {
 		    ownerMargin = ownerMargin.add(fee);
 	    else if (sender == owner)
 	        node.k.TakerMargin = node.k.TakerMargin.add(fee);
-        balances[sender] += (msg.value - fee);
+        //balances[sender] += (msg.value - fee);
+        balanceSend(msg.value - fee, sender);
 	    node.k.isCancelled = true;
     }
     
@@ -359,7 +363,8 @@ contract Book {
 			node.k.makerBurned = true;
 		// set appropriate flags for settlment
         burnFees = burnFees.add(burnFee);
-        balances[sender] += (msg.value - burnFee);
+        //balances[sender] += (msg.value - burnFee);
+        balanceSend(msg.value - burnFee, sender);
 		node.k.isBurned = true;
     }
     
@@ -370,16 +375,17 @@ contract Book {
         LinkedListNode storage node = nodes[id];
         require(node.k.TakerMargin >= node.k.ReqMargin.add(amount));
         node.k.TakerMargin = node.k.TakerMargin.sub(amount);
-        balances[sender] = balances[sender].add(amount);
+        //balances[sender] = balances[sender].add(amount);
+        balanceSend(amount, sender);
     }
 
-    function withdrawBalance()
+    /*function withdrawBalance()
         public
     {
         uint amount = balances[msg.sender];
         balances[msg.sender] = 0;
         msg.sender.transfer(amount);
-    }
+    }*/
     
     function settle(int[8] assetReturns, int16[3] rates, bool longProfited)
         public
@@ -494,7 +500,7 @@ contract Book {
         uint req = requiredMargin();
         require (ownerMargin >= req.add(amount));
         ownerMargin = ownerMargin.sub(amount);
-        balances[owner] = balances[owner].add(amount);
+        balanceSend(amount, owner); //balances[owner] = balances[owner].add(amount);
     }
 
     function abandonedSelfDestruct()
@@ -502,6 +508,13 @@ contract Book {
     {
         require (block.timestamp > lastSettleTime + 20 * (1 days));
         require (lastSettleTime != 0); // set to 0 initially
+    }
+
+    function balanceSend(uint amount, address reciever)
+        internal
+    {
+        SwapMarket market = SwapMarket(admin);
+        market.balanceTransfer.value(amount)(reciever);
     }
 
 }

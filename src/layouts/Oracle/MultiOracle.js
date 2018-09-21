@@ -126,7 +126,7 @@ function DisplayAssets(props) {
           <h3>Name: {hex_to_ascii(props.assets[id].name)} </h3>
           <p>ID: {id.toString()} </p>
           <p>This week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.current)}</p>
-          <p>Volatility: {props.assets[id].volatility}</p>
+          <p>MarginRate: {props.assets[id].currentMarginRate}</p>
           <p>Current Basis: {props.assets[id].currentBasis}</p>
           <p>Next Basis: {props.assets[id].nextBasis}</p>
           <p>Last Day?: {props.assets[id].isFinalDay ? "Yes" : "No"}</p>

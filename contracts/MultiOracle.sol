@@ -12,7 +12,9 @@ contract MultiOracle {
         //uint[8] lastWeekPrices;
         int16 currentBasis;
         int16 nextBasis;
-        uint volatility;
+        uint nextMarginRate;
+        uint currentMarginRate;
+        uint pastMarginRate;
     }
     
     address public admin;
@@ -64,7 +66,7 @@ contract MultiOracle {
 		//asset.prices = _prices;
         asset.currentBasis = _basis;
         asset.nextBasis = _basis;
-        asset.volatility = _vol;
+        asset.currentMarginRate = _vol;
         assets.push(asset);
 
         prices.push(_prices);
@@ -109,6 +111,10 @@ contract MultiOracle {
         asset.isFinalDay = false;
         asset.currentBasis = asset.nextBasis;
 
+        asset.pastMarginRate = asset.currentMarginRate;
+        asset.currentMarginRate = asset.nextMarginRate;
+
+
         emit PriceUpdated(assetID, asset.name, price);
     }
     
@@ -120,7 +126,7 @@ contract MultiOracle {
         require(block.timestamp < asset.lastPriceUpdateTime + 15 minutes);
         //asset.prices[asset.currentDay] = newPrice;
         prices[assetID][asset.currentDay] = newPrice;
-        emit PriceUpdated(assetID, asset.name, price);
+        emit PriceUpdated(assetID, asset.name, newPrice);
         emit PriceCorrected(assetID, asset.name, newPrice);
     }
     
@@ -139,7 +145,7 @@ contract MultiOracle {
         onlyAdmin
     {
         Asset storage asset = assets[assetID];
-        asset.volatility = newVol;
+        asset.nextMarginRate = newVol;
     }
 
     function getPrices(uint id)
@@ -156,9 +162,9 @@ contract MultiOracle {
     function getPastPrices(uint id)
         public
         view
-        returns (uint[8] prices)
+        returns (uint[8] _prices)
     {
-        prices = lastWeekPrices[id];
+        _prices = lastWeekPrices[id];
     }
 
     function changeAdmin(address newAdmin) public {
