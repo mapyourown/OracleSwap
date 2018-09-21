@@ -5,6 +5,7 @@ import {
   AccountData
    } from 'drizzle-react-components'
 import GetMakers from './GetMakers'
+import ShowPNLForm from '../ShowPNL/ShowPNLForm'
 
 class TakerHome extends Component {
   constructor(props, context) {
@@ -85,7 +86,6 @@ class TakerHome extends Component {
   }
 
   render () {
-
     var takerSubcontracts = {}
     Object.keys(this.takerSubcontractKeys).forEach(function (id) {
       takerSubcontracts[id] = {}
@@ -141,17 +141,19 @@ class TakerHome extends Component {
             <button className="pure-button" type="button" onClick={this.takerFund}>Send Funds</button>
             <br/>
             <h2>Trade Interactions</h2>
-            <p>Cancel </p>
+            <h3>Calculate Profit </h3>
+            <ShowPNLForm />
+            <h3>Cancel </h3>
             <ContractForm contract="SwapMarket" method="playerCancel" sendArgs={{value: 1000000000000000000}} />
             <br/>
-            <p>Burn</p>
+            <h3>Burn</h3>
             <ContractForm contract="SwapMarket" method="playerBurn" />
-            <p>Move excess margin into balance</p>
+            <h3>Move excess margin into balance</h3>
             <ContractForm contract="SwapMarket" method="takerWithdrawal" />
             <br/>
+            <h3>Collect Balance </h3>
             <p>Current Balance</p>
             <ContractData contract="SwapMarket" method="balances" methodArgs={[this.props.accounts[0]]}/>
-            <p>Collect Balance </p>
             <ContractForm contract="SwapMarket" method="collectBalance" />
 	      	</div>	
 	    	</div>

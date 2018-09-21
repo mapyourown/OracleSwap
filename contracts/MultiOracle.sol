@@ -108,6 +108,8 @@ contract MultiOracle {
         asset.lastSettlePriceTime = block.timestamp;
         asset.isFinalDay = false;
         asset.currentBasis = asset.nextBasis;
+
+        emit PriceUpdated(assetID, asset.name, price);
     }
     
     function editPrice(uint assetID, uint newPrice)
@@ -118,6 +120,7 @@ contract MultiOracle {
         require(block.timestamp < asset.lastPriceUpdateTime + 15 minutes);
         //asset.prices[asset.currentDay] = newPrice;
         prices[assetID][asset.currentDay] = newPrice;
+        emit PriceUpdated(assetID, asset.name, price);
         emit PriceCorrected(assetID, asset.name, newPrice);
     }
     
@@ -148,6 +151,14 @@ contract MultiOracle {
         current = prices[id];
         previous = lastWeekPrices[id];
         currentPrice=prices[id][assets[id].currentDay];
+    }
+
+    function getPastPrices(uint id)
+        public
+        view
+        returns (uint[8] prices)
+    {
+        prices = lastWeekPrices[id];
     }
 
     function changeAdmin(address newAdmin) public {

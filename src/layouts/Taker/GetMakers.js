@@ -77,14 +77,13 @@ class GetMakers extends Component {
     
     return (
       <div>
-        <DisplayMakers activeMakers={this.activeMakers}/>
         <DisplayActiveBooks activeBooks={activeBooks} />
         <button className="pure-button" type="button" onClick={this.showMakers}> Show All LPs</button>
       </div>
     )
   }
 }
-
+//<DisplayMakers activeMakers={this.activeMakers}/>
 function DisplayMakers(props) {
   const listitems = props.activeMakers.map((maker) =>
     <li key={maker.toString()}>
@@ -105,9 +104,9 @@ function DisplayActiveBooks(props) {
       // TODO: Not all margin is availble, display
       return(
         <li key={maker.toString()}>
-          <p>LP: {maker}</p>
+          <p><strong>LP: {maker}</strong></p>
           <p>Book: {props.activeBooks[maker].bookAddress}</p>
-          <p>Open Margin: {(props.activeBooks[maker].margin/(1e18))/(1+ openFee)} ETH</p>
+          <p>Offered Margin: {(props.activeBooks[maker].margin/(1e18))/(1+ openFee)} ETH</p>
           <p>Current Long Rate: {props.activeBooks[maker].rates['currentLong']}</p>
           <p>Current Short Rate: {props.activeBooks[maker].rates['currentShort']}</p>
           <p>Next Long Rate: {props.activeBooks[maker].rates['nextLong']}</p>

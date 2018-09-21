@@ -11,37 +11,29 @@ class ShowPNL extends Component {
     super(props);
 
     this.contracts = context.drizzle.contracts;
-    //console.log('DisplayRates props', props)
-    //console.log('DisplayRates context', context)
   }
 
   render() {
-    //console.log('Test',this.props.newState)
-    //console.log('keys', this.props.keys)
-    // Contract is not yet intialized.
+
     if(!this.props.contracts.SwapMarket.initialized) {
       return (
         <span>Initializing...</span>
       )
     }
 
-    if (!this.props.keys)
+    /*if (!this.props.keys)
     {
       return (
-          <span> No data </span>
+          <span> Waiting for Data </span>
       )
-    }
+    }*/
 
-    // If the cache key we received earlier isn't in the store yet; the initial value is still being fetched.
-    if(!(this.props.keys.ratesKey in this.props.contracts.SwapMarket.rates)
-      || !(this.props.keys.basisKey in this.props.contracts.SPX_Oracle.basis)
-      || !(this.props.keys.subcontractKey in this.props.newState.contracts.Book.getSubcontract)
-      || !(this.props.keys.assetPriceKey in this.props.contracts.SPX_Oracle.getPrice)
-      || !(this.props.keys.ethPriceKey in this.props.contracts.ETH_Oracle.getPrice) 
-      || !(this.props.keys.assetPricesKey in this.props.contracts.SPX_Oracle.getPrices)
-      || !(this.props.keys.ethPricesKey in this.props.contracts.ETH_Oracle.getPrices)) {
+    console.log('props', this.props)
+
+    
+    if(!this.props.subcontract || !this.props.rates || !this.props.assetWeek || !this.props.ethWeek) {
       return (
-        <span>Waiting...</span>
+        <span> Waiting for Data </span>
       )
     }
 
@@ -53,14 +45,16 @@ class ShowPNL extends Component {
       pendingSpinner = ''
     }
 
-    var subcontract = this.props.newState.contracts.Book.getSubcontract[this.props.keys.subcontractKey].value
-    var rates = this.props.contracts.SwapMarket.rates[this.props.keys.ratesKey].value
-    var basis = this.props.contracts.SPX_Oracle.basis[this.props.keys.basisKey].value
-    var assetPrice = this.props.contracts.SPX_Oracle.getPrice[this.props.keys.assetPriceKey].value
-    var assetWeekPrices = this.props.contracts.SPX_Oracle.getPrices[this.props.keys.assetPricesKey].value
-    var ethPrice = this.props.contracts.ETH_Oracle.getPrice[this.props.keys.ethPriceKey].value
-    var ethWeekPrices = this.props.contracts.ETH_Oracle.getPrices[this.props.keys.ethPricesKey].value
+    var subcontract = this.props.subcontract
+    var rates = this.props.rates
+    var basis = this.props.assetData.currentBasis
+    var assetPrice = this.props.assetPrice
+    var assetWeekPrices = this.props.assetWeek
+    var ethPrice = this.props.ethPrice
+    var ethWeekPrices = this.props.ethWeek
 
+    var assetStart = this.props.assetStart //assetWeekPrices[subcontract.initialDay]
+    var ethStart = this.props.ethStart //ethWeekPrices[subcontract.initialDay]
 
     var side;
     var status = 'Ongoing'
@@ -78,16 +72,22 @@ class ShowPNL extends Component {
     var takerMarginAmount = subcontract.takerMargin/1e18;
 
     // Settle computation
-    var usdReturn = assetPrice*1.0/assetWeekPrices[subcontract.initialDay] - 1
-    var ethReturn = (usdReturn * ethWeekPrices[subcontract.initialDay])/ethPrice
+    var assetReturn = assetPrice*1.0/assetStart - 1
+    var ethReturn = ethPrice/ethStart
+    var marginRate = this.props.assetData.volatility/100
+    var ETHRawPNL = (rmAmount/marginRate) * assetReturn / ethReturn
     var pnl;
+    var basisFee = basis*(1.0/1000)*rmAmount
+    var rate;
     if (subcontract.side)
     {
-      pnl = ethReturn + basis*(1.0/1000)*rmAmount + rates.currentShort*(1.0/1000)*rmAmount
+      rate = rates.currentShort*(1.0/1000)
+      pnl = ETHRawPNL + basisFee + rate*rmAmount
     }
     else
     {
-      pnl = -1.0* (ethReturn + basis*(1.0/1000)*rmAmount) + rates.currentLong*(1.0/1000)*rmAmount
+      rate = rates.currentLong*(1.0/1000)
+      pnl = -1.0* (ETHRawPNL + basisFee + rate*rmAmount)
     }
 
     return (
@@ -99,9 +99,17 @@ class ShowPNL extends Component {
         <p>Taker Margin: {takerMarginAmount}</p>
         <p>LP Side: {side}</p>
         <p>First Day ID: {subcontract.initialDay}</p>
+        <p>First Day Asset Price: {assetWeekPrices[subcontract.initialDay]}</p>
+        <p>First Day ETH Price: {ethWeekPrices[subcontract.initialDay]}</p>
+        <p>Final Asset Price: {assetPrice} </p>
+        <p>Final ETH Price: {ethPrice} </p>
+        <p>MarginRate: {marginRate}</p>
+        <p>PNL: ({rmAmount} ETH / {marginRate}) * {assetReturn} / {ethReturn} = {ETHRawPNL}</p>
+        <p>Basis: {basis*1.0/1000} of {rmAmount} ETH = {basisFee}</p>
+        <p>LP Fee: {rate} of {rmAmount} ETH = {rate * rmAmount} </p>
+        <p>LP Total: {pnl} ETH</p>
+        <p>Taker Total: {-1.0 * pnl} ETH</p>
         <p>Status: {status}</p>
-        <p>LP PNL: {pnl}</p>
-        <p>Taker PNL: {-1.0 * pnl} </p>
       </div>
     );
   }
