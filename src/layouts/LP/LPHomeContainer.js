@@ -1,4 +1,4 @@
-import MakerHome from './MakerHome'
+import LPHome from './LPHome'
 import { drizzleConnect } from 'drizzle-react'
 import PropTypes from 'prop-types'
 
@@ -18,10 +18,10 @@ const mapStateToProps = state => {
   }
 }
 
-const MakerHomeContainer = drizzleConnect(MakerHome, mapStateToProps);
+const LPHomeContainer = drizzleConnect(LPHome, mapStateToProps);
 
-MakerHome.contextTypes = {
+LPHome.contextTypes = {
   drizzle: PropTypes.object
 }
 
-export default MakerHomeContainer
+export default LPHomeContainer

@@ -27,8 +27,10 @@ class ShowPNL extends Component {
           <span> Waiting for Data </span>
       )
     }*/
+
+    console.log('props', this.props)
     
-    if(!this.props.subcontract || !this.props.rates || !this.props.assetWeek || !this.props.ethWeek) {
+    if(!this.props.subcontract || !this.props.makerRates || !this.props.assetWeek || !this.props.ethWeek) {
       return (
         <span> Waiting for Data </span>
       )
@@ -43,7 +45,7 @@ class ShowPNL extends Component {
     }
 
     var subcontract = this.props.subcontract
-    var rates = this.props.rates
+    
     var basis = this.props.assetData.currentBasis
     var assetPrice = this.props.assetPrice
     var assetWeekPrices = this.props.assetWeek
@@ -52,6 +54,13 @@ class ShowPNL extends Component {
 
     var assetStart = this.props.assetStart //assetWeekPrices[subcontract.initialDay]
     var ethStart = this.props.ethStart //ethWeekPrices[subcontract.initialDay]
+
+
+    var rates;
+    if (this.props.makerRates.currentLong == 0 && this.props.makerRates.currentShort == 0)
+      rates = this.props.defaultRates
+    else
+      rates = this.props.makerRates
 
     var side;
     var status = 'Ongoing'
@@ -69,9 +78,11 @@ class ShowPNL extends Component {
     var takerMarginAmount = subcontract.takerMargin/1e18;
 
     // Settle computation
-    var assetReturn = assetPrice*1.0/assetStart - 1
-    var ethReturn = ethPrice/ethStart
-    var marginRate = this.props.assetData.currentMarginRate/100
+    /*var assetReturn = assetPrice*1.0/assetStart - 1
+    var ethReturn = ethPrice/ethStart*/
+    var assetReturn = assetPrice*1.0/assetWeekPrices[subcontract.initialDay] - 1
+    var ethReturn = ethPrice/ethWeekPrices[subcontract.initialDay]
+    var marginRatio = this.props.assetData.pastMarginRatio/100
     var ETHRawPNL = (rmAmount/marginRate) * assetReturn / ethReturn
     var pnl;
     var basisFee = basis*(1.0/1000)*rmAmount
@@ -101,11 +112,11 @@ class ShowPNL extends Component {
         <p>Final Asset Price: {assetPrice} </p>
         <p>Final ETH Price: {ethPrice} </p>
         <p>MarginRate: {marginRate}</p>
-        <p>PNL: ({rmAmount} ETH / {marginRate}) * {assetReturn} / {ethReturn} = {ETHRawPNL}</p>
-        <p>Basis: {basis*1.0/1000} of {rmAmount} ETH = {basisFee}</p>
-        <p>LP Fee: {rate} of {rmAmount} ETH = {rate * rmAmount} </p>
-        <p>LP Total: {pnl} ETH</p>
-        <p>Taker Total: {-1.0 * pnl} ETH</p>
+        <p>ETH PNL: ({rmAmount} ETH / {marginRate}) * {assetReturn} / {ethReturn} = {ETHRawPNL}</p>
+        <p>Basis Fee: {basis*1.0/1000} * {rmAmount} ETH = {basisFee}</p>
+        <p>LP Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} </p>
+        <p>LP PNL: {pnl} ETH</p>
+        <p>Taker PNL: {-1.0 * pnl} ETH</p>
         <p>Status: {status}</p>
       </div>
     );

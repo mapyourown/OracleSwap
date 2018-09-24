@@ -22,8 +22,9 @@ class ShowPNLForm extends Component {
     this.assetKey = this.contracts.MultiOracle.methods.assets.cacheCall(this.assetID)
     this.ethKey = this.contracts.MultiOracle.methods.assets.cacheCall(0)
     this.assetPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
-    this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
+    this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(0)
     this.getOracleLogs = this.getOracleLogs.bind(this)
+    this.defaultRatesKey = this.contracts.SwapMarket.methods.defaultRates.cacheCall();
     this.priceHistory = {}
     this.getOracleLogs(this.assetID);
     this.getOracleLogs(0)
@@ -115,6 +116,10 @@ class ShowPNLForm extends Component {
     var assetHistory = this.priceHistory[this.assetID];
     var ethHistory = this.priceHistory[0];
 
+    var defaultRates;
+    if (this.defaultRatesKey in this.props.contracts.SwapMarket.defaultRates)
+      defaultRates = this.props.contracts.SwapMarket.defaultRates[this.defaultRatesKey].value
+
     var rates;
     if (this.keys.ratesKey in this.props.contracts.SwapMarket.rates)
       rates = this.props.contracts.SwapMarket.rates[this.keys.ratesKey].value
@@ -153,7 +158,7 @@ class ShowPNLForm extends Component {
 
     return (
       <div>
-        <ShowPNL assetData={assetData} ethData={ethData} rates={rates} subcontract={subcontract}  
+        <ShowPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} makerRates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice} ethStart={this.state.startingEthPrice}

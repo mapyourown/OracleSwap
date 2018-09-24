@@ -25,12 +25,12 @@ contract Book {
        
     address constant public burnAddress = 0x0;
     
-    address public owner;
+    address public lp;
     address public admin;
     uint public lastSettleTime;
     uint public lastSettlePrice;
     
-    uint public ownerMargin;
+    uint public lpMargin;
 
     uint public totalLongMargin;
     uint public totalShortMargin;
@@ -195,7 +195,7 @@ contract Book {
 	
 	constructor(address maker, address _admin) public {
 		admin = _admin;
-		owner = maker;
+		lp = maker;
 	}
 
     function requiredMargin()
@@ -218,7 +218,7 @@ contract Book {
         uint RM = amount; 
         uint makerShare = msg.value.sub(RM);
         totalNewMargin = totalNewMargin.add(RM);
-        ownerMargin = ownerMargin.add(makerShare);
+        lpMargin = lpMargin.add(makerShare);
 
         Subcontract memory order;
         order.ReqMargin = RM;
@@ -228,7 +228,7 @@ contract Book {
         order.newSubcontract = true;
         order.Taker = taker;
         
-        bytes32 id = keccak256(abi.encodePacked(numContracts, owner, block.timestamp));
+        bytes32 id = keccak256(abi.encodePacked(numContracts, lp, block.timestamp));
         numContracts += 1;
         LinkedListNode memory node;
         node.k = order;
@@ -239,11 +239,11 @@ contract Book {
         return id;
     }
 
-    function fundOwnerMargin()
+    function fundlpMargin()
         public
         payable
     {
-        ownerMargin = ownerMargin.add(msg.value);
+        lpMargin = lpMargin.add(msg.value);
     }
     
     function fundTakerMargin(bytes32 id)
@@ -287,8 +287,8 @@ contract Book {
         for (uint32 i = 0; i < length; i++) {
             LinkedListNode storage ll_pend = nodes[pendingContracts[i]];
             Subcontract storage k_pend = ll_pend.k;
-            uint toPayPend = Utils.maxSubtract(ownerMargin, k_pend.ReqMargin.mul(cancelFeePercentage)/100);
-            ownerMargin = ownerMargin.sub(toPayPend);
+            uint toPayPend = Utils.maxSubtract(lpMargin, k_pend.ReqMargin.mul(cancelFeePercentage)/100);
+            lpMargin = lpMargin.sub(toPayPend);
             uint tMargin = k_pend.TakerMargin;
             k_pend.TakerMargin = 0;
             //balances[k_pend.Taker] = balances[k_pend.Taker].add(tMargin + toPayPend);
@@ -306,17 +306,17 @@ contract Book {
             ll.k.isCancelled = true;
             iter = ll.next;
             
-            uint toPay = Utils.maxSubtract(ownerMargin, ll.k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
-            ownerMargin = ownerMargin.sub(toPay);
+            uint toPay = Utils.maxSubtract(lpMargin, ll.k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
+            lpMargin = lpMargin.sub(toPay);
             ll.k.TakerMargin = ll.k.TakerMargin.add(toPay);
         }
     }
     
-    function changeOwner(address _newOwner)
+    function changelp(address _newlp)
         internal
         onlyAdmin
     {
-        owner = _newOwner;
+        lp = _newlp;
     }
     
     function cancel(uint priceTime, bytes32 id, address sender, uint8 openFee, uint8 cancelFee)
@@ -325,8 +325,9 @@ contract Book {
         onlyAdmin
     {
         // TODO: allow Admin
+        // TODO: taker can not cancel during settlement period.
         LinkedListNode storage node = nodes[id];
-		require(sender == node.k.Taker || sender == owner);
+		require(sender == node.k.Taker || sender == lp);
         require(!node.k.isCancelled);
 		uint fee;
 		if (node.k.isPending) {
@@ -339,8 +340,8 @@ contract Book {
 		}
 		require(msg.value >= fee);
 		if (sender == node.k.Taker)
-		    ownerMargin = ownerMargin.add(fee);
-	    else if (sender == owner)
+		    lpMargin = lpMargin.add(fee);
+	    else if (sender == lp)
 	        node.k.TakerMargin = node.k.TakerMargin.add(fee);
         //balances[sender] += (msg.value - fee);
         balanceSend(msg.value - fee, sender);
@@ -353,13 +354,13 @@ contract Book {
         onlyAdmin
     {
         LinkedListNode storage node = nodes[id];
-        require(sender == owner || sender == node.k.Taker);
+        require(sender == lp || sender == node.k.Taker);
         require(!node.k.isBurned);
         
         // cost to kill
 		uint burnFee = node.k.ReqMargin/3;
 		require (msg.value >= burnFee);
-		if (msg.sender == owner)
+		if (msg.sender == lp)
 			node.k.makerBurned = true;
 		// set appropriate flags for settlment
         burnFees = burnFees.add(burnFee);
@@ -392,7 +393,7 @@ contract Book {
         onlyAdmin
     {
         // rates is [longFinancing, shortFinancing, basis]
-        /*if (ownerMargin < verifiedOwnerRequiredMargin())
+        /*if (lpMargin < verifiedlpRequiredMargin())
             makerDefault(cancelFee);*/
         uint burnMargin = 0;
         bytes32 iter;
@@ -441,9 +442,9 @@ contract Book {
 
                 // add to burn margin if taker burned or burn fees if maker burned
                 if (!node.k.isBurned)
-                    ownerMargin = ownerMargin.add(toTake);
+                    lpMargin = lpMargin.add(toTake);
                 else if (node.k.makerBurned)
-                    ownerMargin = ownerMargin.add(toTake);
+                    lpMargin = lpMargin.add(toTake);
                 else 
                     burnMargin = burnMargin.add(toTake);
             } 
@@ -452,15 +453,15 @@ contract Book {
                 // the most we can take from burn margin
                 // Take from the burn margin if possible
                 uint burnMarginTake = Utils.maxSubtract(burnMargin, absolutePNL);
-                uint ownerMarginTake = Utils.maxSubtract(ownerMargin, (absolutePNL - burnMarginTake));
-                ownerMargin = ownerMargin.sub(ownerMarginTake);
+                uint lpMarginTake = Utils.maxSubtract(lpMargin, (absolutePNL - burnMarginTake));
+                lpMargin = lpMargin.sub(lpMarginTake);
                 burnMargin = burnMargin.sub(burnMarginTake);
                 if (!node.k.isBurned)
-                    node.k.TakerMargin = node.k.TakerMargin.add(ownerMarginTake + burnMarginTake);
+                    node.k.TakerMargin = node.k.TakerMargin.add(lpMarginTake + burnMarginTake);
                 else if (!node.k.makerBurned)
-                    node.k.TakerMargin = node.k.TakerMargin.add(ownerMarginTake + burnMarginTake);
+                    node.k.TakerMargin = node.k.TakerMargin.add(lpMarginTake + burnMarginTake);
                 else
-                    burnFees = burnFees.add(ownerMarginTake + burnMarginTake);
+                    burnFees = burnFees.add(lpMarginTake + burnMarginTake);
             }
             
             // close if killed or cancelled, will refund everyone
@@ -485,7 +486,7 @@ contract Book {
                 // TODO: fix
                     //node.k.ReqMargin.mul(burnFee)/100);
                 node.k.TakerMargin = node.k.TakerMargin.sub(toSub);
-                ownerMargin = ownerMargin.add(toSub);
+                lpMargin = lpMargin.add(toSub);
                 LLDelete(id);
                 emit TakerDefault(node.k.Taker, id);
             }
@@ -493,21 +494,23 @@ contract Book {
         totalNewMargin = 0;
     }
     
-    function ownerMarginWithdrawal(uint amount)
+    function lpMarginWithdrawal(uint amount)
         public
         onlyAdmin
     {
         uint req = requiredMargin();
-        require (ownerMargin >= req.add(amount));
-        ownerMargin = ownerMargin.sub(amount);
-        balanceSend(amount, owner); //balances[owner] = balances[owner].add(amount);
+        require (lpMargin >= req.add(amount));
+        lpMargin = lpMargin.sub(amount);
+        balanceSend(amount, lp); //balances[lp] = balances[lp].add(amount);
     }
 
-    function abandonedSelfDestruct()
+    function abandonedSelfDestruct(bytes32 id) // set the RM to zero
         public
     {
-        require (block.timestamp > lastSettleTime + 20 * (1 days));
+        require (block.timestamp > lastSettleTime + (20 days));
         require (lastSettleTime != 0); // set to 0 initially
+
+        LLDelete(id);
     }
 
     function balanceSend(uint amount, address reciever)

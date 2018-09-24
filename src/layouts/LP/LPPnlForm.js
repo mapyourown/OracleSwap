@@ -8,7 +8,7 @@ import Book from './../../../build/contracts/Book.json'
  * Create component.
  */
 
-class MakerPNLForm extends Component {
+class LPPnlForm extends Component {
   constructor(props, context) {
     super(props);
 
@@ -176,7 +176,7 @@ class MakerPNLForm extends Component {
   }
 }
 
-MakerPNLForm.contextTypes = {
+LPPnlForm.contextTypes = {
   drizzle: PropTypes.object
 }
 
@@ -191,4 +191,4 @@ const mapStateToProps = state => {
   }
 }
 
-export default drizzleConnect(MakerPNLForm, mapStateToProps)
+export default drizzleConnect(LPPnlForm, mapStateToProps)

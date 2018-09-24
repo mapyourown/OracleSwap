@@ -17,7 +17,7 @@ contract SwapMarket {
     uint16 public burnFee;
     address public admin;
     
-    struct makerRates{
+    struct lpRates{
         int16 currentLong;
         int16 currentShort;
         int16 nextLong;
@@ -25,17 +25,17 @@ contract SwapMarket {
         bool updated;
     }
 
-    makerRates public defaultRates;
+    lpRates public defaultRates;
     
     uint maxOrderLimit;
 
     int[8] public dailyReturns;
     int public weeklyReturn;
     bool public longProfited;
-    //owner specific info
+    //lp specific info
     mapping(address => address) public books;
-    mapping(address => address) public ownerChanges;
-    mapping (address => makerRates) public rates;
+    mapping(address => address) public lpChanges;
+    mapping (address => lpRates) public rates;
     mapping(address => uint) public openMargins;
     mapping(address => uint) public balances;
     
@@ -45,8 +45,8 @@ contract SwapMarket {
 
     bool public isPaused;
 
-    event OpenMargin(address _maker, address _book);
-    event OrderTaken(address _maker, address indexed taker, bytes32 id);
+    event OpenMargin(address _lp, address _book);
+    event OrderTaken(address _lp, address indexed taker, bytes32 id);
     
     modifier onlyAdmin() {
         require (msg.sender == admin);
@@ -62,7 +62,7 @@ contract SwapMarket {
         public
     {
         admin = msg.sender;
-        makerRates memory adminRates;
+        lpRates memory adminRates;
         // todo can't change
         adminRates.nextLong = 10;
         adminRates.nextShort = 4;
@@ -106,24 +106,24 @@ contract SwapMarket {
         
     }
     
-    /*function getMakerRates(address maker)
+    /*function getlpRates(address lp)
         public
         view
         returns (int16 longRate, int16 shortRate, int16 nextLong, int16 nextShort)
     {
-        makerRates storage mRates = rates[maker];
+        lpRates storage mRates = rates[lp];
         longRate = mRates.currentLong;
         shortRate = mRates.currentShort;
         nextLong = mRates.nextLong;
         nextShort = mRates.nextShort;
     }*/
 
-    function getBookData(address maker)
+    function getBookData(address lp)
         public
         view
         returns (address book, uint totalLong, uint totalShort)
     {
-        book = books[maker];
+        book = books[lp];
         if (book != 0x0) {
             Book b = Book(book);
             totalLong = b.totalLongMargin();
@@ -131,13 +131,13 @@ contract SwapMarket {
         }
     }
 
-    function getSubcontractData(address maker, bytes32 id)
+    function getSubcontractData(address lp, bytes32 id)
         public
         view
         returns (address taker, uint takerMargin, uint reqMargin,
          uint8 initialDay, bool side, bool isCancelled, bool isBurned)
     {
-        address book = books[maker];
+        address book = books[lp];
         if (book != 0x0) {
             Book b = Book(book);
             (taker, takerMargin, reqMargin, initialDay,
@@ -145,48 +145,48 @@ contract SwapMarket {
         }
     }
     
-    function take(address maker, uint amount, bool side)
+    function take(address lp, uint amount, bool side)
         public
         payable
         pausable
     {
         require(msg.value == amount * (1 ether)); // allow only whole number amounts
         require(msg.value >= minRM);
-        Book book = Book(books[maker]);
-        uint makerLong = book.totalLongMargin();
-        uint makerShort = book.totalShortMargin();
+        Book book = Book(books[lp]);
+        uint lpLong = book.totalLongMargin();
+        uint lpShort = book.totalShortMargin();
         uint feeAmount = (msg.value * openFee)/100;
-        require(openMargins[maker] >= feeAmount);
+        require(openMargins[lp] >= feeAmount);
 
         uint freeMargin = 0;
-        if (side) // taker is long, maker is short
+        if (side) // taker is long, lp is short
         {
-            if (makerLong > makerShort)
-                freeMargin = makerLong - makerShort;
+            if (lpLong > lpShort)
+                freeMargin = lpLong - lpShort;
         }
-        else // taker is short, maker is long
+        else // taker is short, lp is long
         {
-            if (makerShort > makerLong)
-                freeMargin = makerShort - makerLong;
+            if (lpShort > lpLong)
+                freeMargin = lpShort - lpLong;
         }
 
-        require(msg.value + feeAmount <= openMargins[maker] + freeMargin);
-        uint remainder = openMargins[maker].sub((msg.value - freeMargin) + feeAmount);
-        openMargins[maker] = remainder;
+        require(msg.value + feeAmount <= openMargins[lp] + freeMargin);
+        uint remainder = openMargins[lp].sub((msg.value - freeMargin) + feeAmount);
+        openMargins[lp] = remainder;
         collectedFees = collectedFees.add(feeAmount);
         bytes32 newId = book.take.value(msg.value + (msg.value - freeMargin))(msg.sender, msg.value, side);
-        emit OrderTaken(maker, msg.sender, newId);
+        emit OrderTaken(lp, msg.sender, newId);
     }
 
-    function firstPrice(address owner)
+    function firstPrice(address lp)
         public
         onlyAdmin
     {
-        if (books[owner] == 0x0)
+        if (books[lp] == 0x0)
             return;
-        Book b = Book(books[owner]);
+        Book b = Book(books[lp]);
         uint8 currentDay;
-        ( , , , , currentDay, , , , , ) = oracle.assets(assetID);
+        ( , , , , currentDay, , , , ) = oracle.assets(assetID);
         b.firstSettle(currentDay);
         //b.firstSettle(oracle.assets(assetID).currentDay);
     }
@@ -212,12 +212,12 @@ contract SwapMarket {
                 continue;
             uint assetPrice;
             (, , assetPrice) = oracle.getPrices(assetID);
-            uint volatility;
-            ( , , , , , , , , volatility,) = oracle.assets(i);
+            uint ratio;
+            ( , , , , , , , ratio,) = oracle.assets(i);
             uint ethPrice;
             (, , ethPrice) = oracle.getPrices(0);
             int assetReturn = (int(assetPrice.mul(1 ether)) / int(oracle.lastWeekPrices(i, assetID))) - (1 ether);
-            int leveraged = assetReturn / int(volatility);
+            int leveraged = assetReturn / int(ratio);
             // use ETH prices
             int pnl = (leveraged * int(oracle.lastWeekPrices(i, 0)))/int(ethPrice);
 
@@ -227,17 +227,17 @@ contract SwapMarket {
         longProfited = (assetPrice > oracle.lastWeekPrices(0, assetID));
     }
     
-    function settle(address owner)
+    function settle(address lp)
         public
         onlyAdmin
     {
-        if (books[owner] == 0x0)
+        if (books[lp] == 0x0)
             return; 
-        Book b = Book(books[owner]);
+        Book b = Book(books[lp]);
         int16[3] memory settleRates;
-        makerRates storage mRates = rates[owner];
+        lpRates storage mRates = rates[lp];
 
-        // Give makers default rates
+        // Give lps default rates
         if (mRates.currentLong == 0 && mRates.currentShort == 0)
         {
             settleRates[0] = defaultRates.currentLong;
@@ -245,11 +245,11 @@ contract SwapMarket {
         }
         else
         {
-            settleRates[0] = rates[owner].currentLong;
-            settleRates[1] = rates[owner].currentShort;
+            settleRates[0] = rates[lp].currentLong;
+            settleRates[1] = rates[lp].currentShort;
         }
         int16 basis;
-        (, , , , , basis, , , , ) = oracle.assets(assetID);
+        (, , , , , basis, , , ) = oracle.assets(assetID);
         settleRates[2] = basis;
         
         b.settle(dailyReturns, settleRates, longProfited);
@@ -257,10 +257,10 @@ contract SwapMarket {
         mRates.currentLong = mRates.nextLong;
         mRates.currentShort = mRates.nextShort;
         
-        if (ownerChanges[owner] != 0x0)
-            ownerModify(owner, ownerChanges[owner]);
+        if (lpChanges[lp] != 0x0)
+            lpModify(lp, lpChanges[lp]);
         
-        ownerChanges[owner] = 0x0;
+        lpChanges[lp] = 0x0;
         
     }
     
@@ -271,82 +271,82 @@ contract SwapMarket {
         require(longRate + shortRate < 52);
         //require()
         bool finalDay;
-        (, finalDay, , , , , , , ,) = oracle.assets(assetID);
+        (, finalDay, , , , , , ,) = oracle.assets(assetID);
         require(!finalDay); // Rates locked in by day before
-        makerRates storage mRates = rates[msg.sender];
+        lpRates storage mRates = rates[msg.sender];
         mRates.nextLong = longRate;
         mRates.nextShort = shortRate;
     }
 
-    function playerBurn(address owner, bytes32 id)
+    function playerBurn(address lp, bytes32 id)
         public
         payable
     {
         // TODO make sure only durring settle period
-        Book b = Book(books[owner]);
+        Book b = Book(books[lp]);
         b.burn.value(msg.value)(id, msg.sender);
     }
     
-    function playerCancel(address owner, bytes32 id)
+    function playerCancel(address lp, bytes32 id)
         public
         payable
     {
-        Book b = Book(books[owner]);
+        Book b = Book(books[lp]);
         uint lastSettleTime;
-        (, , , lastSettleTime, , , , , , ) = oracle.assets(assetID);
+        (, , , lastSettleTime, , , , ,) = oracle.assets(assetID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, openFee, cancelFee);
     }
     
-    function changeOwner(address _newOwner)
+    function changelp(address _newlp)
         public
     {
-        ownerChanges[msg.sender] = _newOwner;
+        lpChanges[msg.sender] = _newlp;
     }
     
-    function ownerModify(address _oldOwner, address _newOwner)
+    function lpModify(address _oldlp, address _newlp)
         internal
         returns (bool valid)
     {
-        if (books[_newOwner] != 0x0)
+        if (books[_newlp] != 0x0)
             return false;
-        books[_newOwner] = books[_oldOwner];
-        books[_oldOwner] = 0x0;
+        books[_newlp] = books[_oldlp];
+        books[_oldlp] = 0x0;
         return true;
     }
 
-    function takerFund(address maker, bytes32 id)
+    function takerFund(address lp, bytes32 id)
         public
         payable
     {
-        require(books[maker] != 0x0);
-        Book b = Book(books[maker]);
+        require(books[lp] != 0x0);
+        Book b = Book(books[lp]);
         b.fundTakerMargin.value(msg.value)(id);
     }
 
-    function lpFund(address maker)
+    function lpFund(address lp)
         public
         payable
     {
-        require(books[maker] != 0x0);
-        Book b = Book(books[maker]);
-        b.fundOwnerMargin.value(msg.value)();
+        require(books[lp] != 0x0);
+        Book b = Book(books[lp]);
+        b.fundlpMargin.value(msg.value)();
     }
     
-    function takerWithdrawal(uint amount, address owner, bytes32 id)
+    function takerWithdrawal(uint amount, address lp, bytes32 id)
         public
     {
-        require(books[owner] != 0x0);
-        Book b = Book(books[owner]);
+        require(books[lp] != 0x0);
+        Book b = Book(books[lp]);
         b.takerWithdrawal(id, amount, msg.sender);
     }
     
-    function ownerMarginWithdrawal(uint amount)
+    function lpMarginWithdrawal(uint amount)
         public
     {
         require(books[msg.sender] != 0x0);
         
         Book b = Book(books[msg.sender]);
-        b.ownerMarginWithdrawal(amount);
+        b.lpMarginWithdrawal(amount);
     }
 
     function collectBalance()

@@ -3,6 +3,7 @@ import {
   ContractForm,
   AccountData
    } from 'drizzle-react-components'
+import GetMakers from '../Taker/GetMakers.js'
 
 class MultiOracle extends Component {
   constructor(props, context) {
@@ -94,7 +95,7 @@ class MultiOracle extends Component {
             <ContractForm contract="MultiOracle" method="setSettlePrice" />
             <p>Set Basis </p>
             <ContractForm contract="MultiOracle" method="setBasis" />
-            <p>Set Volatility </p>
+            <p>Set Margin Rate </p>
             <ContractForm contract="MultiOracle" method="setVolatility" />
 
             <h3>Pause All Contracts</h3>
@@ -102,6 +103,7 @@ class MultiOracle extends Component {
           </div>
 
           <div className="pure-u-1-1">
+            <GetMakers />
             <h2>Settlement Functions</h2>
             <h3>1. First Price</h3>
             <ContractForm contract="SwapMarket" method="firstPrice" sendArgs={{from: this.props.accounts[0]}}/>
