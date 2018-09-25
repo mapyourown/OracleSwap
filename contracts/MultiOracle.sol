@@ -8,7 +8,7 @@ contract MultiOracle {
         uint lastPriceUpdateTime;
         uint lastSettlePriceTime;
         uint8 currentDay;
-        int16 currentBasis;
+        int16 currentBasis; // Basis is in tenths of a percent
         int16 nextBasis;
         uint currentMarginRatio;
         uint pastMarginRatio;

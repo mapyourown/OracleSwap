@@ -21,6 +21,7 @@ library Utils {
 contract Book {
 
     // TODO: withdraw goes to Swap
+    // TODO: cap the number of subcontracts
     using SafeMath for uint;
        
     address constant public burnAddress = 0x0;

@@ -349,7 +349,7 @@ contract SwapMarket {
         b.lpMarginWithdrawal(amount);
     }
 
-    function collectBalance()
+    function withdrawBalance()
         public 
     {
         uint amount = balances[msg.sender];
