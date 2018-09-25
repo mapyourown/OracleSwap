@@ -7,7 +7,7 @@ import {
 import BookDataContainer from './BookDataContainer'
 import MarginsContainer from './MarginsContainer'
 import RatesContainer from './RatesContainer'
-import LPPNLForm from './LPPNLForm'
+import LPPNLForm from './LPPnlForm'
 
 class LPHome extends Component {
   constructor(props, context) {

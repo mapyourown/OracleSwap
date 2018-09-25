@@ -4,7 +4,7 @@ import {
   ContractForm,
   AccountData
    } from 'drizzle-react-components'
-import GetMakers from './GetMakers'
+import GetLPs from './GetLPs'
 import ShowPNLForm from '../ShowPNL/ShowPNLForm'
 
 class TakerHome extends Component {
@@ -18,7 +18,7 @@ class TakerHome extends Component {
       takerFundID: '',
       takerFundAmount: '',
       takeAmount: '',
-      takeMakerAddress: '',
+      takelpAddress: '',
       takerIsLong: true
 
     }
@@ -40,7 +40,7 @@ class TakerHome extends Component {
     var amount = this.drizzle.web3.utils.toWei(this.state.takeAmount, 'ether')
     const side = (this.state.takerIsLong === "long")
     console.log(side)
-    var stackID = this.contracts.SwapMarket.methods.take.cacheSend(this.state.takeMakerAddress, this.state.takeAmount, side, {value: amount})
+    var stackID = this.contracts.SwapMarket.methods.take.cacheSend(this.state.takelpAddress, this.state.takeAmount, side, {value: amount})
     console.log('stackID', stackID)
   }
 
@@ -66,14 +66,14 @@ class TakerHome extends Component {
     ).then(function(events) { 
       console.log(events)
       events.forEach(function(element) {
-        this.addSubcontract(element.returnValues._maker, element.returnValues.id)
+        this.addSubcontract(element.returnValues._lp, element.returnValues.id)
       }, this);
     }.bind(this));
   }
 
-  addSubcontract(_maker, _id){
-    var keyID = this.contracts.SwapMarket.methods.getSubcontractData.cacheCall(_maker, _id)
-    this.takerSubcontractKeys[_id] = {key: keyID, maker: _maker}
+  addSubcontract(_lp, _id){
+    var keyID = this.contracts.SwapMarket.methods.getSubcontractData.cacheCall(_lp, _id)
+    this.takerSubcontractKeys[_id] = {key: keyID, lp: _lp}
   }
 
   handleInputChange(event) {
@@ -92,7 +92,7 @@ class TakerHome extends Component {
       if (this.takerSubcontractKeys[id].key in this.props.contracts.SwapMarket.getSubcontractData)
       {
           takerSubcontracts[id] = this.props.contracts.SwapMarket.getSubcontractData[this.takerSubcontractKeys[id].key].value
-          takerSubcontracts[id].maker = this.takerSubcontractKeys[id].maker
+          takerSubcontracts[id].lp = this.takerSubcontractKeys[id].lp
       }
 
     }, this);
@@ -103,12 +103,12 @@ class TakerHome extends Component {
 		  		<div className="pure-u-1-1">
 		        <h2>Active Account</h2>
 		        <AccountData accountIndex="0" units="ether" precision="3" />
-            <GetMakers />
+            <GetLPs />
             <br/>
             <h2>Take</h2>
             <form className="pure-form pure-form-stacked">
-              <label> Maker Address: 
-                <input name="takeMakerAddress" type="text" value={this.state.takeMakerAddress} onChange={this.handleInputChange} placeholder="Address" />
+              <label> LP Address: 
+                <input name="takelpAddress" type="text" value={this.state.takelpAddress} onChange={this.handleInputChange} placeholder="Address" />
               </label>
               <label>Amount in ETH:
                 <input name="takeAmount" type="number" value={this.state.takeAmount} onChange={this.handleInputChange} placeholder="amount in ETH" />
@@ -181,7 +181,7 @@ function DisplaySubcontracts(props) {
     return(
         <li key={id.toString()}>
           <p>Subcontract ID: {id}</p>
-          <p>LP: {props.subcontracts[id].maker}</p>
+          <p>LP: {props.subcontracts[id].lp}</p>
           <p>Taker: {props.subcontracts[id].taker}</p>
           <p>Required Margin: {rmAmount}</p>
           <p>Taker Margin: {takerMarginAmount}</p>

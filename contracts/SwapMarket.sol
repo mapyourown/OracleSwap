@@ -267,9 +267,11 @@ contract SwapMarket {
     function setRate(int16 longRate, int16 shortRate)
         public
     {
-        require(0 < longRate + shortRate);
-        require(longRate + shortRate < 52);
-        //require()
+        // 100 means 1%
+        // LPs cannot be negative overall.
+        require(0 < longRate + shortRate); 
+        require(longRate < 100 &&  shortRate < 100); 
+        require(longRate > -100 && shortRate > -100);
         bool finalDay;
         (, finalDay, , , , , , ,) = oracle.assets(assetID);
         require(!finalDay); // Rates locked in by day before

@@ -47,10 +47,10 @@ class DisplayRates extends Component {
       //console.log(rateList);
       return (
         <span>
-          <p>Current Long: {rateList['currentLong']}</p>
-          <p>Current Short: {rateList['currentShort']}</p>
-          <p>Next Long: {rateList['nextLong']}</p>
-          <p>Next Short: {rateList['nextShort']}</p>
+          <p>Current Long: {rateList['currentLong']/100}% per week</p>
+          <p>Current Short: {rateList['currentShort']/100}% per week</p>
+          <p>Next Long: {rateList['nextLong']/100}% per week</p>
+          <p>Next Short: {rateList['nextShort']/100}% per week</p>
         </span>
       );
     }

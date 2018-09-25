@@ -7,7 +7,7 @@ import { DrizzleProvider } from 'drizzle-react'
 // Layouts
 import App from './App'
 import HomeContainer from './layouts/home/HomeContainer'
-import MakerHomeContainer from './layouts/Maker/MakerHomeContainer'
+import MakerHomeContainer from './layouts/LP/LPHomeContainer'
 import TakerHomeContainer from './layouts/Taker/TakerHomeContainer'
 import OracleHomeContainer from './layouts/Oracle/OracleHomeContainer'
 import MultiOracleContainer from './layouts/Oracle/MultiOracleContainer'

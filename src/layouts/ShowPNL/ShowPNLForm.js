@@ -32,13 +32,13 @@ class ShowPNLForm extends Component {
     this.keys = {}
 
     this.state = {
-      makerAddress: '',
-      bookAddress: '',
+      makerAddress: '0xFA424A1B6C54323849eD8059423599DBF55041B1',
+      bookAddress: '0xCb295513a705963c44c0A4257DDF86eD1C6c6211',
       finalAssetPrice: '',
       finalEthPrice: '',
       startingAssetPrice: '',
       startingEthPrice: '',
-      subcontractID: ''
+      subcontractID: '0x7a68c72343fef19117950b04ec2e81de3920cd2bef0b7e083c94bcf953a9000b'
       /*makerAddress: '0x49f4a41075bB0CEadcd29fc2063Db3dB717c5D0f',
       bookAddress: '0x8cD6B49Cf9D0985890D2C48248abaB3C3439c873',
       startingAssetPrice: '2000',
@@ -79,6 +79,7 @@ class ShowPNLForm extends Component {
     this.keys = {};
     /*this.keys.basisKey = this.contracts.SPX_Oracle.methods.basis.cacheCall()*/
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
+    this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
     this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.state.makerAddress)
     /*this.keys.assetPriceKey = this.contracts.SPX_Oracle.methods.getPrice.cacheCall()
     this.keys.assetPricesKey = this.contracts.SPX_Oracle.methods.getPrices.cacheCall()
@@ -107,10 +108,15 @@ class ShowPNLForm extends Component {
     }
 
     var subcontract
+    var lastSettleTime
     if (this.props.contracts.Book)
     {
       if (this.keys.subcontractKey in this.props.contracts.Book.getSubcontract)
+      {
         subcontract = this.props.contracts.Book.getSubcontract[this.keys.subcontractKey].value
+      }
+      if (this.keys.settleTimeKey in this.props.contracts.Book.lastSettleTime)
+        lastSettleTime = this.props.contracts.Book.lastSettleTime[this.keys.settleTimeKey].value;
     }
 
     var assetHistory = this.priceHistory[this.assetID];
@@ -120,7 +126,7 @@ class ShowPNLForm extends Component {
     if (this.defaultRatesKey in this.props.contracts.SwapMarket.defaultRates)
       defaultRates = this.props.contracts.SwapMarket.defaultRates[this.defaultRatesKey].value
 
-    var rates;
+    var rates
     if (this.keys.ratesKey in this.props.contracts.SwapMarket.rates)
       rates = this.props.contracts.SwapMarket.rates[this.keys.ratesKey].value
 
@@ -162,6 +168,7 @@ class ShowPNLForm extends Component {
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice} ethStart={this.state.startingEthPrice}
+          settleTime={lastSettleTime}
           maker={this.state.makerAddress} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">

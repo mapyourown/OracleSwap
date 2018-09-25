@@ -19,8 +19,6 @@ library Utils {
 }
 
 contract Book {
-
-    // TODO: withdraw goes to Swap
     // TODO: cap the number of subcontracts
     using SafeMath for uint;
        
@@ -29,7 +27,6 @@ contract Book {
     address public lp;
     address public admin;
     uint public lastSettleTime;
-    uint public lastSettlePrice;
     
     uint public lpMargin;
 

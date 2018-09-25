@@ -28,10 +28,10 @@ class Rates extends Component {
     {
       ratesDiv = (
         <div>
-          <p>Current Long: {rateList['currentLong']}{pendingSpinner}</p>
-          <p>Current Short: {rateList['currentShort']}{pendingSpinner}</p>
-          <p>Next Long: {rateList['nextLong']}{pendingSpinner}</p>
-          <p>Next Short: {rateList['nextShort']}{pendingSpinner}</p>
+          <p>Current Long: {rateList['currentLong']/100}% per week{pendingSpinner}</p>
+          <p>Current Short: {rateList['currentShort']/100}% per week{pendingSpinner}</p>
+          <p>Next Long: {rateList['nextLong']/100}% per week{pendingSpinner}</p>
+          <p>Next Short: {rateList['nextShort']/100}% per week{pendingSpinner}</p>
         </div>
       )
     }
@@ -50,7 +50,7 @@ class Rates extends Component {
         <br/>
         {ratesDiv}
         <p>Update Rates: </p>
-        <ContractForm contract="SwapMarket" method="setRate" labels={["New Long Rate", "New Short Rate"]} />
+        <ContractForm contract="SwapMarket" method="setRate" labels={["New Long Rate (100 = 1%)", "New Short Rate (100=1%)"]} />
       </div>
     )
   }
