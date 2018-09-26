@@ -332,9 +332,10 @@ contract Book {
 			fee = (node.k.ReqMargin * openFee)/100;
 		} else {
 			if (priceTime > lastSettleTime) // settlement period
-				fee = (node.k.ReqMargin * cancelFee * 2)/100;
-			else
+            {
+                require(sender != node.k.Taker); // taker cannot cancel during settle
 				fee = (node.k.ReqMargin * cancelFee)/100;
+            }
 		}
 		require(msg.value >= fee);
 		if (sender == node.k.Taker)
@@ -417,13 +418,12 @@ contract Book {
 
             if (node.k.Side)
             {
-                // financingFee = (int(node.k.ReqMargin) * rates[1])/1000;
-                makerPNL = assetReturn + (int(node.k.ReqMargin) * rates[2])/1000 + (int(node.k.ReqMargin) * rates[1])/1000;
+                makerPNL = assetReturn + (int(node.k.ReqMargin) * rates[2])/10000 + (int(node.k.ReqMargin) * rates[1])/10000;
             }
             else
             {
                 // financingFee = (int(node.k.ReqMargin) * rates[0])/1000;
-                makerPNL = (-1) * (assetReturn + (int(node.k.ReqMargin) * rates[2])/1000) + (int(node.k.ReqMargin) * rates[0])/1000;
+                makerPNL = (-1) * (assetReturn + (int(node.k.ReqMargin) * rates[2])/10000) + (int(node.k.ReqMargin) * rates[0])/10000;
             }
 
             uint absolutePNL;

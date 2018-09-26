@@ -35,18 +35,22 @@ class ShowPNL extends Component {
       pendingSpinner = ''
     }
 
+    console.log(this.props)
+
     var subcontract = this.props.subcontract
 
     var settleTime = this.props.settleTime
     var oracleTime = this.props.assetData.lastSettlePriceTime
-    var oracleDate = new Date(oracleTime * 1000)
-    var oracleDatestr = oracleDate.getMonth() + "/" + oracleDate.getDate() + "/" + oracleDate.getFullYear();
-    var oracleHours = oracleDate.getHours();
-    // Minutes part from the timestamp
-    var oracleMinutes = "0" + oracleDate.getMinutes();
 
-    // Will display time in 10:30:23 format
-    var oracleFormattedTime = oracleHours + ':' + oracleMinutes.substr(-2)
+    var isSettlePeriod;
+
+    if (settleTime != 0)
+      isSettlePeriod = (oracleTime > settleTime)
+    else
+      isSettlePeriod = Math.floor((new Date).getTime()/1000) - oracleTime < 60 * 60 * 4 //within 4 hours
+
+    var oracleSettle = dateFromTimestamp(oracleTime)
+    var subSettle = dateFromTimestamp(settleTime)
     var offset = "UTC + " + new Date().getTimezoneOffset()/100
     
     var basis = this.props.assetData.currentBasis
@@ -103,8 +107,9 @@ class ShowPNL extends Component {
     return (
       <div>
         <p>LP: {this.props.maker}</p>
-        <p>Last Settlement Timestamp: {settleTime} </p>
-        <p>Last Oracle Final Price Time: {oracleDatestr} {oracleFormattedTime} Local Time ({offset})</p>
+        <p>Last Subcontract Settlement Time: {settleTime == 0 ? "N/A" : subSettle.date + " " + subSettle.time } ({offset}) </p>
+        <p>Last Oracle Settlement Price Time: {oracleSettle.date} {oracleSettle.time} Local Time ({offset})</p>
+        <p><strong>{isSettlePeriod ? "This is the settle period" : "This is not the settle period"}</strong></p>
         <p>Subcontract ID: {this.props.id}</p>
         <p>Required Margin: {rmAmount}</p>
         <p>Taker: {subcontract.taker}</p>
@@ -124,6 +129,22 @@ class ShowPNL extends Component {
         <p>Status: {status}</p>
       </div>
     );
+  }
+}
+
+function dateFromTimestamp(timestamp) {
+  var date = new Date(timestamp * 1000)
+  var dayMonthYear = date.getMonth() + "/" + date.getDate() + "/" + date.getFullYear();
+  var hours = date.getHours();
+  // Minutes part from the timestamp
+  var minutes = "0" + date.getMinutes();
+
+  // Will display time in 10:30:23 format
+  var formattedTime = hours + ':' + minutes.substr(-2)
+
+  return {
+    time: formattedTime,
+    date: dayMonthYear
   }
 }
 

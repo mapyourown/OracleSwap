@@ -11,15 +11,15 @@ contract SwapMarket {
     MultiOracle public oracle;
     uint public assetID;
 
-    uint public minRM;
-    uint8 public openFee;
-    uint8 public cancelFee;
-    uint16 public burnFee;
+    uint public minRM; // in ETH
+    uint8 public openFee; // in %
+    uint8 public cancelFee; // in %
+    uint16 public burnFee; // in %
     address public admin;
     
     struct lpRates{
-        int16 currentLong;
-        int16 currentShort;
+        int16 currentLong; // in hundreths of a percent, 40 = 0.0040 weekly
+        int16 currentShort; // hundreths of a percent
         int16 nextLong;
         int16 nextShort;
         bool updated;
@@ -64,16 +64,16 @@ contract SwapMarket {
         admin = msg.sender;
         lpRates memory adminRates;
         // todo can't change
-        adminRates.nextLong = 10;
-        adminRates.nextShort = 4;
+        adminRates.nextLong = 10; // .001
+        adminRates.nextShort = 4; // .0004
         adminRates.currentLong = 10;
         adminRates.currentShort = 4;
 
         defaultRates = adminRates;
 
-        openFee = 2;
-        cancelFee = 3;
-        burnFee = 5;
+        openFee = 2; // 2%
+        cancelFee = 3; // 3 %
+        burnFee = 5; // 5%
         
         oracle = MultiOracle(_oracle);
         assetID = _assetID;
@@ -217,7 +217,7 @@ contract SwapMarket {
             uint ethPrice;
             (, , ethPrice) = oracle.getPrices(0);
             int assetReturn = (int(assetPrice.mul(1 ether)) / int(oracle.lastWeekPrices(i, assetID))) - (1 ether);
-            int leveraged = assetReturn / int(ratio);
+            int leveraged = assetReturn * 10000 / int(ratio); // ratio of 1 means .0001
             // use ETH prices
             int pnl = (leveraged * int(oracle.lastWeekPrices(i, 0)))/int(ethPrice);
 

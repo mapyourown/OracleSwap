@@ -8,16 +8,16 @@ contract MultiOracle {
         uint lastPriceUpdateTime;
         uint lastSettlePriceTime;
         uint8 currentDay;
-        int16 currentBasis; // Basis is in tenths of a percent
-        int16 nextBasis;
-        uint currentMarginRatio;
+        int16 currentBasis; // Basis is in hundredths of a percent, e.g. a value of 12 indicates .0012
+        int16 nextBasis; // Basis is in hundredths of a percent, e.g. a value of 12 indicates .0012
+        uint currentMarginRatio; // 4 decimal places, 110000 = 11.0000
         uint pastMarginRatio;
     }
     
     address public admin;
     Asset[] public assets;
-    uint[8][] private prices;
-    uint[8][] public lastWeekPrices;
+    uint[8][] private prices; // includes 6 decimal places, 12000000 = 12.000000
+    uint[8][] public lastWeekPrices; // includes 6 decimal places, 120000000 = 12.000000
     mapping(address => bool) public readers;
     
     modifier onlyAdmin()
@@ -65,11 +65,13 @@ contract MultiOracle {
         asset.currentBasis = _basis;
         asset.nextBasis = _basis;
         asset.currentMarginRatio = _ratio;
+        asset.pastMarginRatio = _ratio;
         assets.push(asset);
 
         prices.push(_prices);
 
         emit AssetAdded(assets.length - 1, _name, _price, _basis, _ratio);
+        emit PriceUpdated(assets.length - 1, _name, _price);
         return assets.length - 1;
     }
     
