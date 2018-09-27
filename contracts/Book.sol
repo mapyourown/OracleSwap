@@ -490,6 +490,7 @@ contract Book {
             }
         }
         totalNewMargin = 0;
+        lastSettleTime = block.timestamp;
     }
     
     function lpMarginWithdrawal(uint amount)

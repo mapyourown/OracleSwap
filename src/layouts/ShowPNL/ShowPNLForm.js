@@ -32,8 +32,8 @@ class ShowPNLForm extends Component {
     this.keys = {}
 
     this.state = {
-      makerAddress: '0xFA424A1B6C54323849eD8059423599DBF55041B1',
-      bookAddress: '0xCb295513a705963c44c0A4257DDF86eD1C6c6211',
+      makerAddress: '',
+      bookAddress: '',
       finalAssetPrice: '',
       finalEthPrice: '',
       startingAssetPrice: '',
@@ -168,7 +168,7 @@ class ShowPNLForm extends Component {
         <ShowPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} makerRates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
-          assetStart={this.state.startingAssetPrice} ethStart={this.state.startingEthPrice}
+          assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}
           settleTime={lastSettleTime}
           maker={this.state.makerAddress} id={this.state.subcontractID} />
         <br/>
