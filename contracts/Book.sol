@@ -412,7 +412,7 @@ contract Book {
                 iter = node.prev;
              
             int makerPNL;
-            int assetReturn = assetReturns[node.k.InitialDay] * int(node.k.ReqMargin);    
+            int assetReturn = (assetReturns[node.k.InitialDay] * int(node.k.ReqMargin)) / (1 ether);    
             node.k.InitialDay = 0;
             uint toTake;
 

@@ -22,7 +22,7 @@ class BookData extends Component {
   }
 
   lookupBook() {
-    console.log(this.props.contracts.SwapMarket)
+    //console.log(this.props.contracts.SwapMarket)
     if(!(this.bookKey in this.props.contracts.SwapMarket.books))
       return
     this.setState({bookStatus: 'Retrieving Data'})
@@ -37,7 +37,8 @@ class BookData extends Component {
       console.log('head', iter)
       this.bookIterate(iter, []);
     }.bind(this))
-    const marginKey = this.drizzle.contracts.Book.methods.ownerMargin.cacheCall()
+    console.log(this.drizzle.contracts)
+    const marginKey = this.drizzle.contracts.Book.methods.lpMargin.cacheCall()
     this.bookLPMarginKey = marginKey
   }
 
@@ -98,9 +99,9 @@ class BookData extends Component {
     var bookMargin = 0;
     if (state.contracts.Book)
     {
-      if (this.bookLPMarginKey in state.contracts.Book.ownerMargin)
+      if (this.bookLPMarginKey in state.contracts.Book.lpMargin)
       {
-        bookMargin = state.contracts.Book.ownerMargin[this.bookLPMarginKey].value/1e18
+        bookMargin = state.contracts.Book.lpMargin[this.bookLPMarginKey].value/1e18
       }
     }
 

@@ -35,7 +35,7 @@ ReactDOM.render((
           <Route path="/oracle" component={App}>
             <IndexRoute component={OracleHomeContainer} />
           </Route>
-          <Route path="/multi" component={App}>
+          <Route path="/admin" component={App}>
             <IndexRoute component={MultiOracleContainer} />
           </Route>
         </Router>

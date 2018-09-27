@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import { 
   ContractForm,
+  ContractData,
   AccountData
    } from 'drizzle-react-components'
 import GetLPs from '../Taker/GetLPs.js'
@@ -18,6 +19,9 @@ class MultiOracle extends Component {
     this.handleInputChange = this.handleInputChange.bind(this)
     this.findAssets = this.findAssets.bind(this)
     this.addAsset = this.addAsset.bind(this)
+
+    this.return0Key = this.contracts.SwapMarket.methods.dailyReturns.cacheCall(0)
+    this.return1Key = this.contracts.SwapMarket.methods.dailyReturns.cacheCall(1)
 
     this.assetKeys = {}
     this.priceKeys = {}
@@ -76,6 +80,13 @@ class MultiOracle extends Component {
       }
     }, this);
 
+    var returns = {first: '', second: ''};
+    if (this.return0Key in this.props.contracts.SwapMarket.dailyReturns)
+      returns.first = this.props.contracts.SwapMarket.dailyReturns[this.return0Key].value
+
+    if (this.return1Key in this.props.contracts.SwapMarket.dailyReturns)
+      returns.second = this.props.contracts.SwapMarket.dailyReturns[this.return1Key].value
+
   	return (
   	  <main className="container">
         <div className="pure-g">
@@ -108,6 +119,9 @@ class MultiOracle extends Component {
             <h3>1. First Price</h3>
             <ContractForm contract="SwapMarket" method="firstPrice" sendArgs={{from: this.props.accounts[0]}}/>
             <h3>2. Calculate Returns</h3>
+            <p>Day 0 return: {returns.first / 1e18}</p>
+            <p>Day 1 return: {returns.second / 1e18} </p>
+            <p>Weekly Return: <ContractData contract="SwapMarket" method="weeklyReturn"/></p>
             <ContractForm contract="SwapMarket" method="computeReturns" sendArgs={{from: this.props.accounts[0]}}/>
             <h3>3. Settle Liquidity Provider</h3>
             <ContractForm contract="SwapMarket" method="settle" sendArgs={{from: this.props.accounts[0]}}/>
@@ -128,7 +142,7 @@ function DisplayAssets(props) {
           <h3>Name: {hex_to_ascii(props.assets[id].name)} </h3>
           <p>ID: {id.toString()} </p>
           <p>This week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.current)}</p>
-          <p>MarginRate: {props.assets[id].currentMarginRate}</p>
+          <p>MarginRatio: {props.assets[id].currentMarginRatio/10000}</p>
           <p>Current Basis: {props.assets[id].currentBasis}</p>
           <p>Next Basis: {props.assets[id].nextBasis}</p>
           <p>Last Day?: {props.assets[id].isFinalDay ? "Yes" : "No"}</p>
@@ -151,7 +165,7 @@ function DisplayWeekPrices(priceArray) {
   var middleString;
   middleString = "[ "
   priceArray.forEach(function (price) {
-    middleString = middleString + price.toString() + ' '
+    middleString = middleString + (price / 1000000).toString() + ' '
   });
   middleString = middleString + "]"
   return middleString;
@@ -166,5 +180,22 @@ function hex_to_ascii(str1)
   }
   return str;
  }
+
+/*function DisplayReturns(props)
+{
+  var returns = this.props.returns
+  return(
+    <div>
+      <p>Day 0: {returns[0]}</p>
+      <p>Day 1: {returns[1]}</p>
+      <p>Day 2: {returns[2]}</p>
+      <p>Day 3: {returns[3]}</p>
+      <p>Day 4: {returns[4]}</p>
+      <p>Day 5: {returns[5]}</p>
+      <p>Day 6: {returns[6]}</p>
+      <p>Day 7: {returns[7]}</p>
+    </div>
+  );
+}*/
 
 export default MultiOracle

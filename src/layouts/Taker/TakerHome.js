@@ -154,7 +154,7 @@ class TakerHome extends Component {
             <h3>Collect Balance </h3>
             <p>Current Balance</p>
             <ContractData contract="SwapMarket" method="balances" methodArgs={[this.props.accounts[0]]}/>
-            <ContractForm contract="SwapMarket" method="collectBalance" />
+            <ContractForm contract="SwapMarket" method="withdrawBalance" />
 	      	</div>	
 	    	</div>
       </main>

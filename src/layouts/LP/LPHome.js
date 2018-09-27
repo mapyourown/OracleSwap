@@ -64,12 +64,12 @@ class LPHome extends Component {
             <p>Burn</p>
             <ContractForm contract="SwapMarket" method="playerBurn" />
             <p>Move excess margin into balance</p>
-            <ContractForm contract="SwapMarket" method="ownerMarginWithdrawal" />
+            <ContractForm contract="SwapMarket" method="lpMarginWithdrawal" />
             <br/>
             <p>Current Balance</p>
             <ContractData contract="SwapMarket" method="balances" methodArgs={[this.props.accounts[0]]}/>
             <label>Collect Balance 
-              <ContractForm contract="SwapMarket" method="collectBalance" />
+              <ContractForm contract="SwapMarket" method="withdrawBalance" />
             </label>
           </div>
 	    	</div>

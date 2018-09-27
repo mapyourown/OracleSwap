@@ -38,7 +38,7 @@ class ShowPNLForm extends Component {
       finalEthPrice: '',
       startingAssetPrice: '',
       startingEthPrice: '',
-      subcontractID: '0x45a2e5312f2fb46bbae5a8d22e282f3030f1c04a3555356efaf41a55395b8043'
+      subcontractID: ''
       /*makerAddress: '0x49f4a41075bB0CEadcd29fc2063Db3dB717c5D0f',
       bookAddress: '0x8cD6B49Cf9D0985890D2C48248abaB3C3439c873',
       startingAssetPrice: '2000',

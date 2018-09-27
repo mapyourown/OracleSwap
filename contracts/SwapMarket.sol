@@ -186,8 +186,14 @@ contract SwapMarket {
             return;
         Book b = Book(books[lp]);
         uint8 currentDay;
-        ( , , , , currentDay, , , , ) = oracle.assets(assetID);
-        b.firstSettle(currentDay);
+        bool isFinal;
+        ( , isFinal, , , currentDay, , , , ) = oracle.assets(assetID);
+        uint8 startDay;
+        if (isFinal)
+            startDay = 0;
+        else
+            startDay = currentDay + 1;
+        b.firstSettle(startDay);
         //b.firstSettle(oracle.assets(assetID).currentDay);
     }
 
@@ -205,27 +211,40 @@ contract SwapMarket {
         int[8] memory blank;
         dailyReturns = blank;
         uint numDays = 8;
+
+        uint assetPrice;
+        uint[8] memory assetPastWeek;
+        (, assetPastWeek, assetPrice) = oracle.getPrices(assetID);
+
+        uint ethPrice;
+        uint[8] memory ethPastweek;
+        (, ethPastweek, ethPrice) = oracle.getPrices(0);
+
+        uint ratio;
+        ( , , , , , , , ratio,) = oracle.assets(assetID);
+
         for (uint8 i = 0; i < numDays; i++)
         {
-            // Do nothing if empty
-            if (oracle.lastWeekPrices(i, assetID) == 0)
+            if (assetPastWeek[i] == 0)
                 continue;
-            uint assetPrice;
-            (, , assetPrice) = oracle.getPrices(assetID);
-            uint ratio;
-            ( , , , , , , , ratio,) = oracle.assets(i);
-            uint ethPrice;
-            (, , ethPrice) = oracle.getPrices(0);
-            int assetReturn = (int(assetPrice.mul(1 ether)) / int(oracle.lastWeekPrices(i, assetID))) - (1 ether);
-            int leveraged = assetReturn * 10000 / int(ratio); // ratio of 1 means .0001
-            // use ETH prices
-            int pnl = (leveraged * int(oracle.lastWeekPrices(i, 0)))/int(ethPrice);
+
+            int assetReturn = ( int(assetPrice.mul(1 ether)) / int(assetPastWeek[i]) ) - (1 ether);
+            int leveraged = (assetReturn * 10000) / int(ratio);
+            int pnl = (leveraged * int(ethPastweek[i])) / int(ethPrice);
 
             dailyReturns[i] = pnl;
         }
         weeklyReturn = dailyReturns[0];
         longProfited = (assetPrice > oracle.lastWeekPrices(0, assetID));
     }
+
+/*    function getReturns()
+        public
+        view
+        returns (int[8] _dailyReturns)
+    {
+        _dailyReturns = dailyReturns;
+    }*/
     
     function settle(address lp)
         public

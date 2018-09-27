@@ -13,18 +13,21 @@ module.exports = function(deployer, network, accounts) {
 	//var factory;
 
 	deployer.then(function () {
-		return deployer.deploy(MultiOracle, 200, 4, 50);
+		return deployer.deploy(MultiOracle, 200000000, 4, 50);
 	}).then(function(instance) {
 		oracle = instance;
-		return oracle.addAsset('0x535058', 2000, 2, 10); //SPX
+		return oracle.addAsset('0x535058', 2000000000, 2, 250); //SPX
 	}).then(function () {
 		//BTC
-		return oracle.addAsset('0x425443', 6500, 3, 40);
+		return oracle.addAsset('0x425443', 6500000000, 3, 350);
 	}).then(function () {
-		//BTC
-		return oracle.addAsset('0x4254432f455448', 30, 4, 25);
+		//BTC ETH
+		return oracle.addAsset('0x4254432f455448', 30000000, 4, 25);
 	}).then(function (result) {
-		return deployer.deploy(SwapMarket, oracle.address, 0);
+		return deployer.deploy(SwapMarket, oracle.address, 1);
+	}).then(function (instance) {
+		var market = instance;
+		oracle.addReader(market.address);
 	});
 
 	/*deployer.then(function () {

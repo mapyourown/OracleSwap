@@ -47,7 +47,7 @@ class ShowPNL extends Component {
     if (settleTime != 0)
       isSettlePeriod = (oracleTime > settleTime)
     else
-      isSettlePeriod = Math.floor((new Date).getTime()/1000) - oracleTime < 60 * 60 * 4 //within 4 hours
+      isSettlePeriod = Math.floor((new Date()).getTime()/1000) - oracleTime < 60 * 60 * 4 //within 4 hours
 
     var oracleSettle = dateFromTimestamp(oracleTime)
     var subSettle = dateFromTimestamp(settleTime)
@@ -88,19 +88,19 @@ class ShowPNL extends Component {
     var ethReturn = ethPrice/ethStart*/
     var assetReturn = assetPrice*1.0/assetWeekPrices[subcontract.initialDay] - 1
     var ethReturn = ethPrice/ethWeekPrices[subcontract.initialDay]
-    var marginRatio = this.props.assetData.pastMarginRatio/100
+    var marginRatio = this.props.assetData.currentMarginRatio/10000
     var ETHRawPNL = (rmAmount/marginRatio) * assetReturn / ethReturn
     var pnl;
-    var basisFee = basis*(1.0/1000)*rmAmount
+    var basisFee = basis*(1.0/10000)*rmAmount
     var rate
     if (subcontract.side)
     {
-      rate = rates.currentShort*(1.0/1000)
+      rate = rates.currentShort*(1.0/10000)
       pnl = ETHRawPNL + basisFee + rate*rmAmount
     }
     else
     {
-      rate = rates.currentLong*(1.0/1000)
+      rate = rates.currentLong*(1.0/10000)
       pnl = -1.0* (ETHRawPNL + basisFee + rate*rmAmount)
     }
 
@@ -116,16 +116,17 @@ class ShowPNL extends Component {
         <p>Taker Margin: {takerMarginAmount}</p>
         <p>LP Side: {side}</p>
         <p>First Day ID: {subcontract.initialDay}</p>
-        <p>First Day Asset Price: {assetWeekPrices[subcontract.initialDay]}</p>
-        <p>First Day ETH Price: {ethWeekPrices[subcontract.initialDay]}</p>
+        <p>First Day Asset Price: {assetWeekPrices[subcontract.initialDay] / 1000000}</p>
+        <p>First Day ETH Price: {ethWeekPrices[subcontract.initialDay] / 1000000}</p>
         <p>Final Asset Price: {assetPrice} </p>
         <p>Final ETH Price: {ethPrice} </p>
         <p>MarginRatio: {marginRatio}</p>
         <p>ETH PNL: ({rmAmount} ETH / {marginRatio}) * {assetReturn} / {ethReturn} = {ETHRawPNL}</p>
-        <p>Basis Fee: {basis*1.0/1000} * {rmAmount} ETH = {basisFee}</p>
-        <p>LP Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} </p>
+        <p>Basis Fee: {basis*1.0/10000} * {rmAmount} ETH = {basisFee} ETH</p>
+        <p>LP Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} ETH</p>
         <p>LP PNL: {pnl} ETH</p>
         <p>Taker PNL: {-1.0 * pnl} ETH</p>
+        <p>New Taker Margin: {takerMarginAmount - pnl} ETH</p>
         <p>Status: {status}</p>
       </div>
     );
