@@ -130,7 +130,7 @@ class ShowPNL extends Component {
         <p>Leverage Ratio: {leverageRatio}</p>
         <p>Return: ({rmAmount} ETH * {leverageRatio} * {assetReturn}) / {ethReturn} = {ETHRawPNL}</p>
         <p>Basis Fee: {basis*1.0/10000} * {rmAmount} ETH = {basisFee} ETH</p>
-        <p>LP Financing Fee Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} ETH</p>
+        <p>LP Margin Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} ETH</p>
         <p>LP PNL: {pnl} ETH</p>
         <p>Taker PNL: {-1.0 * pnl} ETH</p>
         <p>New Taker Margin: {takerMarginAmount - pnl} ETH</p>

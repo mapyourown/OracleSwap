@@ -10,7 +10,7 @@ class GetLPs extends Component {
     this.showlps = this.showlps.bind(this)
     this.activelps = []
     this.activelpBookKeys = {}
-
+    this.defaultRatesKey = this.contracts.SwapMarket.methods.defaultRates.cacheCall()
   }
 
   showlps() {
@@ -74,10 +74,14 @@ class GetLPs extends Component {
       if (this.activelpBookDataKeys[lp] in this.props.SwapMarket.getBookData)
         activeBooks[lp].bookData = this.props.SwapMarket.getBookData[this.activelpBookDataKeys[lp]].value
     }, this);
+
+    var defaultRates = {}
+    if (this.defaultRatesKey in this.props.SwapMarket.defaultRates)
+      defaultRates = this.props.SwapMarket.defaultRates[this.defaultRatesKey].value
     
     return (
       <div>
-        <DisplayActiveBooks activeBooks={activeBooks} />
+        <DisplayActiveBooks activeBooks={activeBooks} defaultRates={defaultRates} />
         <button className="pure-button" type="button" onClick={this.showlps}> Show All LPs</button>
       </div>
     )
@@ -101,16 +105,21 @@ function DisplayActiveBooks(props) {
     if (props.activeBooks[lp].bookAddress && props.activeBooks[lp].rates
      && props.activeBooks[lp].margin && props.activeBooks[lp].bookData)
     {
-      // TODO: Not all margin is availble, display
+      var currentRates;
+      if (props.activeBooks[lp].rates['currentLong'] == 0 && props.activeBooks[lp].rates['currentShort'] == 0)
+        currentRates = props.defaultRates
+      else
+        currentRates = props.activeBooks[lp].rates
+      
       return(
         <li key={lp.toString()}>
           <p><strong>LP: {lp}</strong></p>
           <p>Book: {props.activeBooks[lp].bookAddress}</p>
           <p>Offered Margin: {(props.activeBooks[lp].margin/(1e18))/(1+ openFee)} ETH</p>
-          <p>Current Long Rate: {props.activeBooks[lp].rates['currentLong']}</p>
-          <p>Current Short Rate: {props.activeBooks[lp].rates['currentShort']}</p>
-          <p>Next Long Rate: {props.activeBooks[lp].rates['nextLong']}</p>
-          <p>Next Short Rate: {props.activeBooks[lp].rates['nextShort']}</p>
+          <p>Current Long Rate: {currentRates['currentLong']/100}% per week</p>
+          <p>Current Short Rate: {currentRates['currentShort']/100}% per week</p>
+          <p>Next Long Rate: {props.activeBooks[lp].rates['nextLong']/100}% per week</p>
+          <p>Next Short Rate: {props.activeBooks[lp].rates['nextShort']/100}% per week</p>
           <p>Current Long Margin: {props.activeBooks[lp].bookData['totalLong']/(1e18)} ETH</p>
           <p>Current Short Margin: {props.activeBooks[lp].bookData['totalShort']/(1e18)} ETH</p>
         </li>

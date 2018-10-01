@@ -46,7 +46,7 @@ class Rates extends Component {
     
     return (
       <div>
-        <strong>Your LP Rates: </strong>
+        <strong>Your LP Margin Rates: </strong>
         <br/>
         {ratesDiv}
         <p>Update Rates: </p>
