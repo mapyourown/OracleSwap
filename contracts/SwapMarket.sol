@@ -196,7 +196,7 @@ contract SwapMarket {
         uint8 currentDay;
         bool isFinal;
         ( , isFinal, , , currentDay, , ,) = oracle.assets(ASSET_ID);
-        b.firstSettle(currentDay);
+        b.firstPrice(currentDay);
         uint currentPrice;
         (, , currentPrice) = oracle.getPrices(ASSET_ID);
         emit FirstPrice(lp, currentPrice);

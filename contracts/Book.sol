@@ -253,7 +253,7 @@ contract Book {
         node.k.TakerMargin += msg.value;
     }
 
-    function firstSettle(uint8 priceDay)
+    function firstPrice(uint8 priceDay)
         public
         onlyAdmin
     {
