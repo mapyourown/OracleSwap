@@ -89,8 +89,8 @@ function DisplayAssetData(props) {
       <div>
         <h3>Name: {hex_to_ascii(data.name)} </h3>
         <p>ID: {data.id.toString()} </p>
-        <p>Margin Rate: {data.currentMarginRate}</p>
-        <p>Current Basis: {data.currentBasis}</p>
+        <p>Margin Ratio: {data.currentMarginRatio/10000}</p>
+        <p>Current Basis: {data.currentBasis/10000}</p>
         <p>Next Basis: {data.nextBasis}</p>
         <p>Last Day?: {data.isFinalDay ? "Yes" : "No"}</p>
         <p>Current Day ID: {data.currentDay} </p>
@@ -115,7 +115,7 @@ function DisplayPriceLogHistory(props) {
   const listitems = prices.map( function(item, index) {
     return(
         <li key={index.toString()}>
-          <p>BlockNumber: {item.blockNum} Price: {item.price}</p>
+          <p>BlockNumber: {item.blockNum} Price: {item.price/1000000}</p>
         </li>
       );
   });

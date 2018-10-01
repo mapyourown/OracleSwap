@@ -143,8 +143,8 @@ function DisplayAssets(props) {
           <p>ID: {id.toString()} </p>
           <p>This week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.current)}</p>
           <p>MarginRatio: {props.assets[id].currentMarginRatio/10000}</p>
-          <p>Current Basis: {props.assets[id].currentBasis}</p>
-          <p>Next Basis: {props.assets[id].nextBasis}</p>
+          <p>Current Basis: {props.assets[id].currentBasis/10000}</p>
+          <p>Next Basis: {props.assets[id].nextBasis/10000}</p>
           <p>Last Day?: {props.assets[id].isFinalDay ? "Yes" : "No"}</p>
           <p>Current Day ID: {props.assets[id].currentDay} </p>
           <p>Last week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.previous)}</p>

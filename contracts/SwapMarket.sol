@@ -189,11 +189,7 @@ contract SwapMarket {
         bool isFinal;
         ( , isFinal, , , currentDay, , , , ) = oracle.assets(assetID);
         uint8 startDay;
-        if (isFinal)
-            startDay = 0;
-        else
-            startDay = currentDay + 1;
-        b.firstSettle(startDay);
+        b.firstSettle(currentDay);
         //b.firstSettle(oracle.assets(assetID).currentDay);
     }
 

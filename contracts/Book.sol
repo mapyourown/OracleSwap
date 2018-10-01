@@ -262,12 +262,12 @@ contract Book {
         for (uint32 i = 0; i < length; i++) {
             LinkedListNode storage node = nodes[pendingContracts[i]];
             
-            if (node.k.isCancelled || node.k.isBurned)
+/*            if (node.k.isCancelled || node.k.isBurned)
             {
                 // delete to give refunds
                 LLDelete(pendingContracts[i]);
                 continue;
-            }
+            } */
             
             // simply record the price for updating
             // then move it to the rest of the list
