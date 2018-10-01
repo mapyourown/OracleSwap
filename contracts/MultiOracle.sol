@@ -10,8 +10,7 @@ contract MultiOracle {
         uint8 currentDay;
         int16 currentBasis; // Basis is in hundredths of a percent, e.g. a value of 12 indicates .0012
         int16 nextBasis; // Basis is in hundredths of a percent, e.g. a value of 12 indicates .0012
-        uint currentMarginRatio; // 4 decimal places, 110000 = 11.0000
-        uint pastMarginRatio;
+        uint leverageRatio; // 6 decimal places, 1234567 = 1.234567
     }
     
     address public admin;
@@ -27,10 +26,10 @@ contract MultiOracle {
     }
     
     event PriceUpdated(uint indexed _id, bytes32 indexed _name, uint _price);
-    event MarginRatioUpdated(uint indexed _id, uint _marginRatio);
+    event LeverageRatioUpdated(uint indexed _id, uint _ratio);
     event BasisUpdated(uint indexed _id, bytes32 indexed _name, int16 _basis);
     event AssetAdded(uint indexed _id, bytes32 _name, uint _price, int16 _basis, uint _vol);
-    event PriceCorrected(uint indexed _id, bytes32 indexed _name, uint _price, uint _marginRatio);
+    event PriceCorrected(uint indexed _id, bytes32 indexed _name, uint _price, uint _leverageRatio);
     
     constructor (uint ethPrice, int16 ethBasis, uint ethVol) public {
         admin = msg.sender;
@@ -45,13 +44,13 @@ contract MultiOracle {
         readers[newReader] = true;
     }
     
-    function addAsset(bytes32 _name, uint _price, int16 _basis, uint _ratio)
+    function addAsset(bytes32 name, uint startPrice, int16 basis, uint ratio)
         public
         returns (uint id)
     {
         require (msg.sender == admin || msg.sender == address(this));
         Asset memory asset;
-        asset.name = _name;
+        asset.name = name;
         asset.isFinalDay = false;
         asset.currentDay = 0;
         asset.lastPriceUpdateTime = block.timestamp;
@@ -60,18 +59,17 @@ contract MultiOracle {
 
         lastWeekPrices.push(_prices);
 		
-        _prices[0] = _price;
+        _prices[0] = startPrice;
 		//asset.prices = _prices;
-        asset.currentBasis = _basis;
-        asset.nextBasis = _basis;
-        asset.currentMarginRatio = _ratio;
-        asset.pastMarginRatio = _ratio;
+        asset.currentBasis = basis;
+        asset.nextBasis = basis;
+        asset.leverageRatio = ratio;
         assets.push(asset);
 
         prices.push(_prices);
 
-        emit AssetAdded(assets.length - 1, _name, _price, _basis, _ratio);
-        emit PriceUpdated(assets.length - 1, _name, _price);
+        emit AssetAdded(assets.length - 1, name, startPrice, basis, ratio);
+        emit PriceUpdated(assets.length - 1, name, startPrice);
         return assets.length - 1;
     }
     
@@ -81,28 +79,23 @@ contract MultiOracle {
     {
         Asset storage asset = assets[assetID];
         asset.currentDay = asset.currentDay + 1;
-        //asset.prices[asset.currentDay] = price;
         asset.isFinalDay = lastDay;
-
         prices[assetID][asset.currentDay] = price;
 
         emit PriceUpdated(assetID, asset.name, price);
     }
     
-    function setSettlePrice(uint assetID, uint price, uint marginRatio)
+    function setSettlePrice(uint assetID, uint price, uint leverageRatio)
         public
         onlyAdmin
     {
-        // TODO: add time definitions for no double update
+        // TODO: add time definitions for final release
         Asset storage asset = assets[assetID];
-        //asset.lastWeekPrices = asset.prices;
-
         lastWeekPrices[assetID] = prices[assetID];
 
         asset.currentDay = 0;
         uint[8] memory newPrices;
         newPrices[0] = price;
-        //asset.prices = newPrices;
 
         prices[assetID] = newPrices;
 
@@ -111,12 +104,11 @@ contract MultiOracle {
         asset.isFinalDay = false;
         asset.currentBasis = asset.nextBasis;
 
-        asset.pastMarginRatio = asset.currentMarginRatio;
-        asset.currentMarginRatio = marginRatio;
+        asset.leverageRatio = asset.leverageRatio;
 
 
         emit PriceUpdated(assetID, asset.name, price);
-        emit MarginRatioUpdated(assetID, marginRatio);
+        emit LeverageRatioUpdated(assetID, leverageRatio);
     }
     
     function editPrice(uint assetID, uint newPrice, uint newRatio)
@@ -127,9 +119,9 @@ contract MultiOracle {
         require(block.timestamp < asset.lastPriceUpdateTime + 15 minutes);
         //asset.prices[asset.currentDay] = newPrice;
         prices[assetID][asset.currentDay] = newPrice;
-        asset.currentMarginRatio = newRatio;
+        asset.leverageRatio = newRatio;
         emit PriceUpdated(assetID, asset.name, newPrice);
-        emit MarginRatioUpdated(assetID, newRatio);
+        emit LeverageRatioUpdated(assetID, newRatio);
         emit PriceCorrected(assetID, asset.name, newPrice, newRatio);
     }
     

@@ -9,12 +9,13 @@ contract SwapMarket {
     using SafeMath for uint;
     
     MultiOracle public oracle;
-    uint public assetID;
+    
+    uint public ASSET_ID;
 
-    uint public minRM; // in ETH
-    uint8 public openFee; // in %
-    uint8 public cancelFee; // in %
-    uint16 public burnFee; // in %
+    uint public MIN_RM; // in ETH
+    uint8 public OPEN_FEE; // in %
+    uint8 public CANCEL_FEE; // in %
+    uint16 public BURN_FEE; // in %
     address public admin;
     
     struct lpRates{
@@ -47,6 +48,7 @@ contract SwapMarket {
 
     event OpenMargin(address _lp, address _book);
     event OrderTaken(address _lp, address indexed taker, bytes32 id);
+    event FirstPrice(address _lp, uint _price);
     
     modifier onlyAdmin() {
         require (msg.sender == admin);
@@ -58,7 +60,7 @@ contract SwapMarket {
         _;
     }
     
-    constructor ( address _oracle, uint _assetID)
+    constructor ( address priceOracle, uint assetID)
         public
     {
         admin = msg.sender;
@@ -71,16 +73,16 @@ contract SwapMarket {
 
         defaultRates = adminRates;
 
-        openFee = 2; // 2%
-        cancelFee = 3; // 3 %
-        burnFee = 5; // 5%
+        OPEN_FEE = 2; // 2%
+        CANCEL_FEE = 3; // 3 %
+        BURN_FEE = 5; // 5%
         
-        oracle = MultiOracle(_oracle);
-        assetID = _assetID;
+        oracle = MultiOracle(priceOracle);
+        ASSET_ID = assetID;
 
         isPaused = false;
 
-        minRM = 1 * (1 ether);
+        MIN_RM = 10 ether;
         
     }   
 
@@ -134,8 +136,14 @@ contract SwapMarket {
     function getSubcontractData(address lp, bytes32 id)
         public
         view
-        returns (address taker, uint takerMargin, uint reqMargin,
-         uint8 initialDay, bool side, bool isCancelled, bool isBurned)
+        returns (
+            address taker,
+            uint takerMargin,
+            uint reqMargin,
+            uint8 initialDay,
+            bool side, 
+            bool isCancelled, 
+            bool isBurned)
     {
         address book = books[lp];
         if (book != 0x0) {
@@ -151,11 +159,11 @@ contract SwapMarket {
         pausable
     {
         require(msg.value == amount * (1 ether)); // allow only whole number amounts
-        require(msg.value >= minRM);
+        require(msg.value >= MIN_RM);
         Book book = Book(books[lp]);
         uint lpLong = book.totalLongMargin();
         uint lpShort = book.totalShortMargin();
-        uint feeAmount = (msg.value * openFee)/100;
+        uint feeAmount = (msg.value * OPEN_FEE)/100;
         require(openMargins[lp] >= feeAmount);
 
         uint freeMargin = 0;
@@ -187,10 +195,12 @@ contract SwapMarket {
         Book b = Book(books[lp]);
         uint8 currentDay;
         bool isFinal;
-        ( , isFinal, , , currentDay, , , , ) = oracle.assets(assetID);
+        ( , isFinal, , , currentDay, , , , ) = oracle.assets(ASSET_ID);
         uint8 startDay;
         b.firstSettle(currentDay);
-        //b.firstSettle(oracle.assets(assetID).currentDay);
+        uint currentPrice;
+        (, , currentPrice) = oracle.getPrices(ASSET_ID);
+        emit FirstPrice(lp, currentPrice);
     }
 
     function computeReturns()
@@ -210,14 +220,14 @@ contract SwapMarket {
 
         uint assetPrice;
         uint[8] memory assetPastWeek;
-        (, assetPastWeek, assetPrice) = oracle.getPrices(assetID);
+        (, assetPastWeek, assetPrice) = oracle.getPrices(ASSET_ID);
 
         uint ethPrice;
         uint[8] memory ethPastweek;
         (, ethPastweek, ethPrice) = oracle.getPrices(0);
 
-        uint ratio;
-        ( , , , , , , , ratio,) = oracle.assets(assetID);
+        uint leverageRatio;
+        ( , , , , , , , leverageRatio,) = oracle.assets(ASSET_ID);
 
         for (uint8 i = 0; i < numDays; i++)
         {
@@ -225,22 +235,14 @@ contract SwapMarket {
                 continue;
 
             int assetReturn = ( int(assetPrice.mul(1 ether)) / int(assetPastWeek[i]) ) - (1 ether);
-            int leveraged = (assetReturn * 10000) / int(ratio);
+            int leveraged = assetReturn * int(leverageRatio) / 1e6;
             int pnl = (leveraged * int(ethPastweek[i])) / int(ethPrice);
 
             dailyReturns[i] = pnl;
         }
         weeklyReturn = dailyReturns[0];
-        longProfited = (assetPrice > oracle.lastWeekPrices(0, assetID));
+        longProfited = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));
     }
-
-/*    function getReturns()
-        public
-        view
-        returns (int[8] _dailyReturns)
-    {
-        _dailyReturns = dailyReturns;
-    }*/
     
     function settle(address lp)
         public
@@ -264,7 +266,7 @@ contract SwapMarket {
             settleRates[1] = rates[lp].currentShort;
         }
         int16 basis;
-        (, , , , , basis, , , ) = oracle.assets(assetID);
+        (, , , , , basis, , , ) = oracle.assets(ASSET_ID);
         settleRates[2] = basis;
         
         b.settle(dailyReturns, settleRates, longProfited);
@@ -288,7 +290,7 @@ contract SwapMarket {
         require(longRate < 100 &&  shortRate < 100); 
         require(longRate > -100 && shortRate > -100);
         bool finalDay;
-        (, finalDay, , , , , , ,) = oracle.assets(assetID);
+        (, finalDay, , , , , , ,) = oracle.assets(ASSET_ID);
         require(!finalDay); // Rates locked in by day before
         lpRates storage mRates = rates[msg.sender];
         mRates.nextLong = longRate;
@@ -310,8 +312,8 @@ contract SwapMarket {
     {
         Book b = Book(books[lp]);
         uint lastSettleTime;
-        (, , , lastSettleTime, , , , ,) = oracle.assets(assetID);
-        b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, openFee, cancelFee);
+        (, , , lastSettleTime, , , , ,) = oracle.assets(ASSET_ID);
+        b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, OPEN_FEE, CANCEL_FEE);
     }
     
     function changelp(address _newlp)
