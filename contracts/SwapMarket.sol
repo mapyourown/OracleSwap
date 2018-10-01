@@ -195,8 +195,7 @@ contract SwapMarket {
         Book b = Book(books[lp]);
         uint8 currentDay;
         bool isFinal;
-        ( , isFinal, , , currentDay, , , , ) = oracle.assets(ASSET_ID);
-        uint8 startDay;
+        ( , isFinal, , , currentDay, , ,) = oracle.assets(ASSET_ID);
         b.firstSettle(currentDay);
         uint currentPrice;
         (, , currentPrice) = oracle.getPrices(ASSET_ID);
@@ -227,7 +226,7 @@ contract SwapMarket {
         (, ethPastweek, ethPrice) = oracle.getPrices(0);
 
         uint leverageRatio;
-        ( , , , , , , , leverageRatio,) = oracle.assets(ASSET_ID);
+        ( , , , , , , ,leverageRatio) = oracle.assets(ASSET_ID);
 
         for (uint8 i = 0; i < numDays; i++)
         {
@@ -266,7 +265,7 @@ contract SwapMarket {
             settleRates[1] = rates[lp].currentShort;
         }
         int16 basis;
-        (, , , , , basis, , , ) = oracle.assets(ASSET_ID);
+        (, , , , , basis, , ) = oracle.assets(ASSET_ID);
         settleRates[2] = basis;
         
         b.settle(dailyReturns, settleRates, longProfited);
@@ -290,7 +289,7 @@ contract SwapMarket {
         require(longRate < 100 &&  shortRate < 100); 
         require(longRate > -100 && shortRate > -100);
         bool finalDay;
-        (, finalDay, , , , , , ,) = oracle.assets(ASSET_ID);
+        (, finalDay, , , , , ,) = oracle.assets(ASSET_ID);
         require(!finalDay); // Rates locked in by day before
         lpRates storage mRates = rates[msg.sender];
         mRates.nextLong = longRate;
@@ -312,7 +311,7 @@ contract SwapMarket {
     {
         Book b = Book(books[lp]);
         uint lastSettleTime;
-        (, , , lastSettleTime, , , , ,) = oracle.assets(ASSET_ID);
+        (, , , lastSettleTime, , , ,) = oracle.assets(ASSET_ID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, OPEN_FEE, CANCEL_FEE);
     }
     

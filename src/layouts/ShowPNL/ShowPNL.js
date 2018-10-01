@@ -94,8 +94,8 @@ class ShowPNL extends Component {
       assetReturn = assetPrice*1.0/assetWeekPrices[subcontract.initialDay] - 1
       ethReturn = ethPrice/ethWeekPrices[subcontract.initialDay]
     }
-    var marginRatio = this.props.assetData.currentMarginRatio/10000
-    var ETHRawPNL = (rmAmount/marginRatio) * assetReturn / ethReturn
+    var leverageRatio = this.props.assetData.leverageRatio/1e6
+    var ETHRawPNL = (rmAmount * leverageRatio * assetReturn) / ethReturn
     var pnl;
     var basisFee = basis*(1.0/10000)*rmAmount
     var rate
@@ -126,8 +126,8 @@ class ShowPNL extends Component {
         <p>First Day ETH Price: {ethStart ? ethStart / 1000000 : ethWeekPrices[subcontract.initialDay] / 1000000}</p>
         <p>Final Asset Price: {assetPrice / 1000000} </p>
         <p>Final ETH Price: {ethPrice / 1000000} </p>
-        <p>MarginRatio: {marginRatio}</p>
-        <p>Return: ({rmAmount} ETH / {marginRatio}) * {assetReturn} / {ethReturn} = {ETHRawPNL}</p>
+        <p>Leverage Ratio: {leverageRatio}</p>
+        <p>Return: ({rmAmount} ETH * {leverageRatio} * {assetReturn}) / {ethReturn} = {ETHRawPNL}</p>
         <p>Basis Fee: {basis*1.0/10000} * {rmAmount} ETH = {basisFee} ETH</p>
         <p>LP Financing Fee Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} ETH</p>
         <p>LP PNL: {pnl} ETH</p>

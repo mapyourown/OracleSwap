@@ -106,8 +106,6 @@ class MultiOracle extends Component {
             <ContractForm contract="MultiOracle" method="setSettlePrice" />
             <p>Set Basis </p>
             <ContractForm contract="MultiOracle" method="setBasis" />
-            <p>Set Margin Rate </p>
-            <ContractForm contract="MultiOracle" method="setVolatility" />
 
             <h3>Pause All Contracts</h3>
             <ContractForm contract="SwapMarket" method="pause" sendArgs={{from: this.props.accounts[0]}}/>
@@ -142,7 +140,7 @@ function DisplayAssets(props) {
           <h3>Name: {hex_to_ascii(props.assets[id].name)} </h3>
           <p>ID: {id.toString()} </p>
           <p>This week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.current)}</p>
-          <p>MarginRatio: {props.assets[id].currentMarginRatio/10000}</p>
+          <p>Leverage Ratio: {props.assets[id].leverageRatio/1e6}</p>
           <p>Current Basis: {props.assets[id].currentBasis/10000}</p>
           <p>Next Basis: {props.assets[id].nextBasis/10000}</p>
           <p>Last Day?: {props.assets[id].isFinalDay ? "Yes" : "No"}</p>
