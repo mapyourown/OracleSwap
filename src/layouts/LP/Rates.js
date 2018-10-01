@@ -50,7 +50,7 @@ class Rates extends Component {
         <br/>
         {ratesDiv}
         <p>Update Rates: </p>
-        <ContractForm contract="SwapMarket" method="setRate" labels={["New Long Rate (100 = 1%)", "New Short Rate (100=1%)"]} />
+        <ContractForm contract="SwapMarket" method="setRate" labels={["Long Rate (100 = 1%)", "Short Rate (100 = 1%)"]} />
       </div>
     )
   }

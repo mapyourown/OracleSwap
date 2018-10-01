@@ -147,10 +147,12 @@ class ShowPNLForm extends Component {
     if(!this.state.finalAssetPrice)
     {
       var ethprices = this.priceHistory[0]
+      console.log(ethprices)
       if (!ethprices || ethprices.length === 0)
         ethPrice = 0;
       else
         ethPrice=ethprices[ethprices.length - 1].price
+      console.log(ethPrice)
     } else {
       ethPrice = this.state.finalEthPrice;
     }

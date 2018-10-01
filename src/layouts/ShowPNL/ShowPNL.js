@@ -109,6 +109,7 @@ class ShowPNL extends Component {
       rate = rates.currentLong*(1.0/10000)
       pnl = -1.0* (ETHRawPNL + basisFee + rate*rmAmount)
     }
+    console.log(ethPrice);
 
     return (
       <div>

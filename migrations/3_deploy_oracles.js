@@ -13,16 +13,17 @@ module.exports = function(deployer, network, accounts) {
 	//var factory;
 
 	deployer.then(function () {
-		return deployer.deploy(MultiOracle, 200000000, 4, 50);
+		return deployer.deploy(MultiOracle, 200000000, 4, 1000000);
 	}).then(function(instance) {
 		oracle = instance;
-		return oracle.addAsset('0x535058', 2000000000, 2, 250); //SPX
+		// SPX
+		return oracle.addAsset('0x535058', 2000000000, 2, 15000000); 
 	}).then(function () {
 		//BTC
-		return oracle.addAsset('0x425443', 6500000000, 3, 350);
+		return oracle.addAsset('0x425443', 6500000000, 3, 2000000);
 	}).then(function () {
 		//BTC ETH
-		return oracle.addAsset('0x4254432f455448', 30000000, 4, 25);
+		return oracle.addAsset('0x4254432f455448', 30000000, 4, 1500000);
 	}).then(function (result) {
 		return deployer.deploy(SwapMarket, oracle.address, 1);
 	}).then(function (instance) {

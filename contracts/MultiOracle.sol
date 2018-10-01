@@ -104,7 +104,7 @@ contract MultiOracle {
         asset.isFinalDay = false;
         asset.currentBasis = asset.nextBasis;
 
-        asset.leverageRatio = asset.leverageRatio;
+        asset.leverageRatio = leverageRatio;
 
 
         emit PriceUpdated(assetID, asset.name, price);

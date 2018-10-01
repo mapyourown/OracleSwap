@@ -100,11 +100,11 @@ class MultiOracle extends Component {
             <h2>Oracle Functions</h2>
             <p>Add Asset</p>
             <ContractForm contract="MultiOracle" method="addAsset" />
-            <p>Set Intraweek Price </p>
+            <p>Set Intraweek Price (6 decimal places)</p>
             <ContractForm contract="MultiOracle" method="setIntraweekPrice" />
-            <p>Set Settle Price </p>
+            <p>Set Settle Price (6 decimal places)</p>
             <ContractForm contract="MultiOracle" method="setSettlePrice" />
-            <p>Set Basis </p>
+            <p>Set Basis (4 decimal places)</p>
             <ContractForm contract="MultiOracle" method="setBasis" />
 
             <h3>Pause All Contracts</h3>
