@@ -39,8 +39,13 @@ class OracleHome extends Component {
         toBlock: 'latest'
       }
     ).then(function(events) { 
+      console.log(events)
       events.forEach(function(element) {
-        pricedata.push({blockNum: element.blockNumber, price: element.returnValues._price})
+        if (element.returnValues._id == id)
+          pricedata.push( {
+            blockNum: element.blockNumber, 
+            price: element.returnValues._price, 
+            time: element.returnValues._timestamp})
       }, this);
       this.priceHistory[id] = pricedata
     }.bind(this));
@@ -89,7 +94,7 @@ function DisplayAssetData(props) {
       <div>
         <h3>Name: {hex_to_ascii(data.name)} </h3>
         <p>ID: {data.id.toString()} </p>
-        <p>Margin Ratio: {data.currentMarginRatio/10000}</p>
+        <p>Leverage Ratio: {data.leverageRatio/1000000}</p>
         <p>Current Basis: {data.currentBasis/10000}</p>
         <p>Next Basis: {data.nextBasis}</p>
         <p>Last Day?: {data.isFinalDay ? "Yes" : "No"}</p>
@@ -112,10 +117,12 @@ function DisplayPriceLogHistory(props) {
   if (prices.length > 5)
     prices = prices.slice(prices.length - 5, prices.length)
 
+
   const listitems = prices.map( function(item, index) {
+    var date = dateFromTimestamp(item.time)
     return(
         <li key={index.toString()}>
-          <p>BlockNumber: {item.blockNum} Price: {item.price/1000000}</p>
+          <p>Block Number: {item.blockNum} Price: {item.price/1000000} Time: {date.date} {date.time} local time</p>
         </li>
       );
   });
@@ -146,5 +153,21 @@ function hex_to_ascii(str1)
   }
   return str;
  }
+
+function dateFromTimestamp(timestamp) {
+  var date = new Date(timestamp * 1000)
+  var dayMonthYear = date.getMonth() + "/" + date.getDate() + "/" + date.getFullYear();
+  var hours = date.getHours();
+  // Minutes part from the timestamp
+  var minutes = "0" + date.getMinutes();
+
+  // Will display time in 10:30:23 format
+  var formattedTime = hours + ':' + minutes.substr(-2)
+
+  return {
+    time: formattedTime,
+    date: dayMonthYear
+  }
+}
 
 export default OracleHome

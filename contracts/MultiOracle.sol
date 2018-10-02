@@ -25,7 +25,7 @@ contract MultiOracle {
         _;
     }
     
-    event PriceUpdated(uint indexed _id, bytes32 indexed _name, uint _price);
+    event PriceUpdated(uint indexed _id, bytes32 indexed _name, uint _price, uint _timestamp);
     event LeverageRatioUpdated(uint indexed _id, uint _ratio);
     event BasisUpdated(uint indexed _id, bytes32 indexed _name, int16 _basis);
     event AssetAdded(uint indexed _id, bytes32 _name, uint _price, int16 _basis, uint _vol);
@@ -69,7 +69,7 @@ contract MultiOracle {
         prices.push(_prices);
 
         emit AssetAdded(assets.length - 1, name, startPrice, basis, ratio);
-        emit PriceUpdated(assets.length - 1, name, startPrice);
+        emit PriceUpdated(assets.length - 1, name, startPrice, block.timestamp);
         return assets.length - 1;
     }
     
@@ -82,7 +82,7 @@ contract MultiOracle {
         asset.isFinalDay = lastDay;
         prices[assetID][asset.currentDay] = price;
 
-        emit PriceUpdated(assetID, asset.name, price);
+        emit PriceUpdated(assetID, asset.name, price, block.timestamp);
     }
     
     function setSettlePrice(uint assetID, uint price, uint leverageRatio)
@@ -107,7 +107,7 @@ contract MultiOracle {
         asset.leverageRatio = leverageRatio;
 
 
-        emit PriceUpdated(assetID, asset.name, price);
+        emit PriceUpdated(assetID, asset.name, price, block.timestamp);
         emit LeverageRatioUpdated(assetID, leverageRatio);
     }
     
@@ -120,7 +120,7 @@ contract MultiOracle {
         //asset.prices[asset.currentDay] = newPrice;
         prices[assetID][asset.currentDay] = newPrice;
         asset.leverageRatio = newRatio;
-        emit PriceUpdated(assetID, asset.name, newPrice);
+        emit PriceUpdated(assetID, asset.name, newPrice, block.timestamp);
         emit LeverageRatioUpdated(assetID, newRatio);
         emit PriceCorrected(assetID, asset.name, newPrice, newRatio);
     }

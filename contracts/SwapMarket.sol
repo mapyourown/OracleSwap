@@ -17,6 +17,8 @@ contract SwapMarket {
     uint8 public CANCEL_FEE; // in %
     uint16 public BURN_FEE; // in %
     address public admin;
+
+    bool noTakerWithdraw;
     
     struct lpRates{
         int16 currentLong; // in hundreths of a percent, 40 = 0.0040 weekly
@@ -83,6 +85,8 @@ contract SwapMarket {
         isPaused = false;
 
         MIN_RM = 10 ether;
+
+        noTakerWithdraw = false;
         
     }   
 
@@ -354,8 +358,16 @@ contract SwapMarket {
         public
     {
         require(books[lp] != 0x0);
+        require(!noTakerWithdraw);
         Book b = Book(books[lp]);
         b.takerWithdrawal(id, amount, msg.sender);
+    }
+
+    function takerWithdrawalLock(bool lockValue)
+        public
+        onlyAdmin
+    {
+        noTakerWidhraw = lockValue;
     }
     
     function lpMarginWithdrawal(uint amount)
