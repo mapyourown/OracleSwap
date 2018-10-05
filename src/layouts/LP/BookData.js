@@ -34,10 +34,8 @@ class BookData extends Component {
     this.drizzle.addContract(config)
     this.drizzle.contracts.Book.methods.head().call().then(function (result) {
       var iter = result;
-      console.log('head', iter)
       this.bookIterate(iter, []);
     }.bind(this))
-    console.log(this.drizzle.contracts)
     const marginKey = this.drizzle.contracts.Book.methods.lpMargin.cacheCall()
     this.bookLPMarginKey = marginKey
   }
@@ -52,7 +50,6 @@ class BookData extends Component {
     ids.push(iter)
     this.drizzle.contracts.Book.methods.getNode(iter).call().then(function (result) {
       var nextIter = result.next;
-        console.log('in iterate',nextIter);
         this.bookIterate(nextIter, ids)
     }.bind(this));
   }
@@ -62,7 +59,6 @@ class BookData extends Component {
       const key = await this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(id)
       this.bookSubcontractKeys[id] = key
       this.setState({test: 'finished pop'})
-      console.log('changed state')
     }
   }
 

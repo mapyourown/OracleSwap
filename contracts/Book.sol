@@ -380,6 +380,8 @@ contract Book {
         msg.sender.transfer(amount);
     }*/
     
+
+    // TOOD: pending
     function settle(int[8] assetReturns, int16[3] rates, bool longProfited)
         public
         onlyAdmin

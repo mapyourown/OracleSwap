@@ -24,6 +24,7 @@ class LPPnlForm extends Component {
     this.assetPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
     this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
     this.bookKey = this.contracts.SwapMarket.methods.books.cacheCall(this.props.accounts[0])
+    this.defaultRatesKey = this.contracts.SwapMarket.methods.defaultRates.cacheCall()
     this.getOracleLogs = this.getOracleLogs.bind(this)
     this.priceHistory = {}
     this.getOracleLogs(this.assetID);
@@ -63,18 +64,23 @@ class LPPnlForm extends Component {
   }
 
   handleSubmit() {
+    var bookAddress;
     if (this.bookKey in this.props.contracts.SwapMarket.books)
-      this.setState({bookAddress: this.props.contracts.SwapMarket.books[this.bookKey]})
+    {
+      bookAddress = this.props.contracts.SwapMarket.books[this.bookKey].value
+    }
   	var config = {
       contractName: 'Book',
-      web3Contract: new this.drizzle.web3.eth.Contract(Book.abi, this.state.bookAddress)
+      web3Contract: new this.drizzle.web3.eth.Contract(Book.abi, bookAddress)
     }
     this.drizzle.addContract(config)
     this.keys = {};
     /*this.keys.basisKey = this.contracts.SPX_Oracle.methods.basis.cacheCall()*/
+    console.log(this.drizzle.contracts)
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
     this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.props.accounts[0])
-    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall()
+    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.props.accounts[0])
+    this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
   }
 
   handleInputChange(event) {
@@ -98,10 +104,15 @@ class LPPnlForm extends Component {
     }
 
     var subcontract
+    var lastSettleTime
     if (this.props.contracts.Book)
     {
       if (this.keys.subcontractKey in this.props.contracts.Book.getSubcontract)
+      {
         subcontract = this.props.contracts.Book.getSubcontract[this.keys.subcontractKey].value
+      }
+      if (this.keys.settleTimeKey in this.props.contracts.Book.lastSettleTime)
+        lastSettleTime = this.props.contracts.Book.lastSettleTime[this.keys.settleTimeKey].value;
     }
 
     var assetHistory = this.priceHistory[this.assetID];
@@ -110,6 +121,10 @@ class LPPnlForm extends Component {
     var rates;
     if (this.keys.ratesKey in this.props.contracts.SwapMarket.rates)
       rates = this.props.contracts.SwapMarket.rates[this.keys.ratesKey].value
+
+    var defaultRates;
+    if (this.defaultRatesKey in this.props.contracts.SwapMarket.defaultRates)
+      defaultRates = this.props.contracts.SwapMarket.defaultRates[this.defaultRatesKey].value
 
     var assetPrice;
     if(!this.state.finalAssetPrice)
@@ -145,16 +160,17 @@ class LPPnlForm extends Component {
 
     var lpChangeAddress;
     if (this.keys.lpChangesKey in this.props.contracts.SwapMarket.lpChanges)
-      lpChangeAddress = this.props.contracts.SwapMarket.lpChanges[this.keys.lpChangesKey]
+      lpChangeAddress = this.props.contracts.SwapMarket.lpChanges[this.keys.lpChangesKey].value;
 
     return (
       <div>
-        <ShowPNL assetData={assetData} ethData={ethData} rates={rates} subcontract={subcontract}  
+        <ShowPNL assetData={assetData} ethData={ethData} defalutRates={defaultRates} lpRates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
-          assetStart={this.state.startingAssetPrice} ethStart={this.state.startingEthPrice}
+          assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}
+          settleTime={lastSettleTime}
           lpChangeAddress={lpChangeAddress}
-          maker={this.props.accounts[0]} id={this.state.subcontractID} />
+          lp={this.props.accounts[0]} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">
           <input name="subcontractID" type="text" value={this.state.subcontractID} onChange={this.handleInputChange} placeholder="Subcontract ID" />

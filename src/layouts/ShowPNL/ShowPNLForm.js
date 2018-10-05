@@ -75,7 +75,7 @@ class ShowPNLForm extends Component {
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
     this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
     this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.state.makerAddress)
-    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall()
+    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.state.makerAddress)
   }
 
   handleInputChange(event) {
@@ -159,13 +159,13 @@ class ShowPNLForm extends Component {
 
     return (
       <div>
-        <ShowPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} makerRates={rates} subcontract={subcontract}  
+        <ShowPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} lpRates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}
           settleTime={lastSettleTime}
           lpChangeAddress={lpChangeAddress}
-          maker={this.state.makerAddress} id={this.state.subcontractID} />
+          lp={this.state.makerAddress} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">
           <input name="makerAddress" type="text" value={this.state.makerAddress} onChange={this.handleInputChange} placeholder="LP Address" />

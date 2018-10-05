@@ -20,9 +20,11 @@ class LPHome extends Component {
     this.contracts = context.drizzle.contracts
     this.drizzle = context.drizzle
     this.state = {
-   	  toIncrease: 0
+   	  toIncrease: 0,
+      lpFundAmount: ''
     }
 
+    this.lpFund = this.lpFund.bind(this)
     this.handleInputChange = this.handleInputChange.bind(this)
 
     this.bookKey = this.contracts.SwapMarket.methods.books.cacheCall(this.props.accounts[0])
@@ -36,6 +38,12 @@ class LPHome extends Component {
     this.setState({
       [name]: value
     });
+  }
+
+  lpFund() {
+    var amount = this.drizzle.web3.utils.toWei(this.state.lpFundAmount, 'ether')
+    var stackID = this.contracts.SwapMarket.methods.lpFund.cacheSend(this.props.accounts[0], {value: amount})
+    console.log('stackID', stackID)
   }
 
 
@@ -61,6 +69,13 @@ class LPHome extends Component {
             <LPPNLForm />
             <p>Cancel </p>
             <ContractForm contract="SwapMarket" method="playerCancel" sendArgs={{value: 1000000000000000000}} />
+            <br/>
+            <p> Add Margin </p>
+            <p>Add margin to Book:</p>
+            <label>Amount (in ETH): 
+                <input name="lpFundAmount" type="number" value={this.state.lpFundAmount} onChange={this.handleInputChange} />
+            </label>
+            <button className="pure-button" type="button" onClick={this.lpFund}>Send Funds</button>
             <br/>
             <p>Burn</p>
             <ContractForm contract="SwapMarket" method="playerBurn" />

@@ -21,7 +21,7 @@ class ShowPNL extends Component {
       )
     }
     
-    if(!this.props.subcontract || !this.props.makerRates || !this.props.assetWeek || !this.props.ethWeek) {
+    if(!this.props.subcontract || !this.props.lpRates || !this.props.assetWeek || !this.props.ethWeek) {
       return (
         <span> Waiting for Data </span>
       )
@@ -63,10 +63,10 @@ class ShowPNL extends Component {
     var ethStart = this.props.ethStart //ethWeekPrices[subcontract.initialDay]
 
     var rates
-    if (this.props.makerRates.currentLong == 0 && this.props.makerRates.currentShort == 0)
+    if (this.props.lpRates.currentLong == 0 && this.props.lpRates.currentShort == 0)
       rates = this.props.defaultRates
     else
-      rates = this.props.makerRates
+      rates = this.props.lpRates
 
     var side;
     var status = 'Ongoing'
@@ -113,7 +113,7 @@ class ShowPNL extends Component {
 
     return (
       <div>
-        <p>LP: {this.props.maker}</p>
+        <p>LP: {this.props.lp}</p>
         <p>Last Subcontract Settlement Time: {settleTime == 0 ? "N/A" : subSettle.date + " " + subSettle.time } ({offset}) </p>
         <p>Last Oracle Settlement Price Time: {oracleSettle.date} {oracleSettle.time} Local Time ({offset})</p>
         <p><strong>{isSettlePeriod ? "This is the settle period" : "This is not the settle period"}</strong></p>
@@ -128,7 +128,7 @@ class ShowPNL extends Component {
         <p>Final Asset Price: {assetPrice / 1000000} </p>
         <p>Final ETH Price: {ethPrice / 1000000} </p>
         <p>Leverage Ratio: {leverageRatio}</p>
-        <p>Return: ({rmAmount} ETH * {leverageRatio} * {assetReturn}) / {ethReturn} = {ETHRawPNL}</p>
+        <p>Payoff: ({rmAmount} ETH * {leverageRatio} * {assetReturn}) / {ethReturn} = {ETHRawPNL}</p>
         <p>Basis Fee: {basis*1.0/10000} * {rmAmount} ETH = {basisFee} ETH</p>
         <p>LP Margin Fee: {rate} * {rmAmount} ETH = {rate * rmAmount} ETH</p>
         <p>LP PNL: {pnl} ETH</p>
