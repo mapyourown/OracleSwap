@@ -16,7 +16,7 @@ Node.js is required to run the server.
     npm install -g ganache-cli
     ```
 
-2. Start the development blockchain, ideally with a blocktime
+2. Start the development blockchain. Optionally, set the time to produce blocks.
     ```javascript
     // 1 second blocktime.
     ganache-cli -b 1
