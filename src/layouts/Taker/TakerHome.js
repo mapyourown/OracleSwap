@@ -40,8 +40,6 @@ class TakerHome extends Component {
   take() {
     var amount = this.drizzle.web3.utils.toWei(this.state.takeAmount, 'ether')
     const side = (this.state.takerIsLong === "long")
-    console.log(side)
-    console.log("state", this.state.takerIsLong)
     var stackID = this.contracts.SwapMarket.methods.take.cacheSend(this.state.takelpAddress, this.state.takeAmount, side, {value: amount})
     console.log('stackID', stackID)
   }
