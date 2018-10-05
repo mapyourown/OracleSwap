@@ -39,13 +39,6 @@ class ShowPNLForm extends Component {
       startingAssetPrice: '',
       startingEthPrice: '',
       subcontractID: ''
-      /*makerAddress: '0x49f4a41075bB0CEadcd29fc2063Db3dB717c5D0f',
-      bookAddress: '0x8cD6B49Cf9D0985890D2C48248abaB3C3439c873',
-      startingAssetPrice: '2000',
-      startingEthPrice: '200',
-      finalAssetPrice: '2100',
-      finalEthPrice: '195',
-      subcontractID: '0xec34cb27e7cb5c3d895b36ad57e3d959b3cf3e17d170d77aa50c5a42c175e3c9'*/
     };
   }
 
@@ -82,10 +75,7 @@ class ShowPNLForm extends Component {
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
     this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
     this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.state.makerAddress)
-    /*this.keys.assetPriceKey = this.contracts.SPX_Oracle.methods.getPrice.cacheCall()
-    this.keys.assetPricesKey = this.contracts.SPX_Oracle.methods.getPrices.cacheCall()
-    this.keys.ethPriceKey = this.contracts.ETH_Oracle.methods.getPrice.cacheCall()
-    this.keys.ethPricesKey = this.contracts.ETH_Oracle.methods.getPrices.cacheCall()*/
+    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall()
   }
 
   handleInputChange(event) {
@@ -147,15 +137,17 @@ class ShowPNLForm extends Component {
     if(!this.state.finalAssetPrice)
     {
       var ethprices = this.priceHistory[0]
-      console.log(ethprices)
       if (!ethprices || ethprices.length === 0)
         ethPrice = 0;
       else
         ethPrice=ethprices[ethprices.length - 1].price
-      console.log(ethPrice)
     } else {
       ethPrice = this.state.finalEthPrice;
     }
+
+    var lpChangeAddress;
+    if (this.keys.lpChangesKey in this.props.contracts.SwapMarket.lpChanges)
+      lpChangeAddress = this.props.contracts.SwapMarket.lpChanges[this.keys.lpChangesKey].value
 
     var assetPastWeek;
     if (this.assetPastKey in this.props.contracts.MultiOracle.getPastPrices)
@@ -172,6 +164,7 @@ class ShowPNLForm extends Component {
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}
           settleTime={lastSettleTime}
+          lpChangeAddress={lpChangeAddress}
           maker={this.state.makerAddress} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">

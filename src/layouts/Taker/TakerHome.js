@@ -6,6 +6,7 @@ import {
    } from 'drizzle-react-components'
 import GetLPs from './GetLPs'
 import ShowPNLForm from '../ShowPNL/ShowPNLForm'
+import WithdrawForm from '../Withdraw/WithdrawForm'
 
 class TakerHome extends Component {
   constructor(props, context) {
@@ -19,7 +20,7 @@ class TakerHome extends Component {
       takerFundAmount: '',
       takeAmount: '',
       takelpAddress: '',
-      takerIsLong: true
+      takerIsLong: "long"
 
     }
 
@@ -40,6 +41,7 @@ class TakerHome extends Component {
     var amount = this.drizzle.web3.utils.toWei(this.state.takeAmount, 'ether')
     const side = (this.state.takerIsLong === "long")
     console.log(side)
+    console.log("state", this.state.takerIsLong)
     var stackID = this.contracts.SwapMarket.methods.take.cacheSend(this.state.takelpAddress, this.state.takeAmount, side, {value: amount})
     console.log('stackID', stackID)
   }
@@ -64,7 +66,6 @@ class TakerHome extends Component {
         toBlock: 'latest'
       }
     ).then(function(events) { 
-      console.log(events)
       events.forEach(function(element) {
         this.addSubcontract(element.returnValues._lp, element.returnValues.id)
       }, this);
@@ -151,10 +152,7 @@ class TakerHome extends Component {
             <h3>Move excess margin into balance</h3>
             <ContractForm contract="SwapMarket" method="takerWithdrawal" />
             <br/>
-            <h3>Collect Balance </h3>
-            <p>Current Balance</p>
-            <ContractData contract="SwapMarket" method="balances" methodArgs={[this.props.accounts[0]]}/>
-            <ContractForm contract="SwapMarket" method="withdrawBalance" />
+            <WithdrawForm />
 	      	</div>	
 	    	</div>
       </main>

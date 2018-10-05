@@ -136,6 +136,7 @@ class ShowPNL extends Component {
         <p>New Taker Margin: {takerMarginAmount - pnl} ETH</p>
         <p>Cure Amount: {takerMarginAmount - pnl < rmAmount ? rmAmount - (takerMarginAmount - pnl) : 0} </p>
         <p>Status: {status}</p>
+        <p>New LP status: {this.props.lpChangeAddress == 0x0 ? "No new LP" : "New LP: " + this.props.lpChangeAddress} </p>
       </div>
     );
   }

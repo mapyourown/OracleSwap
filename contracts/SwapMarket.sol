@@ -367,7 +367,7 @@ contract SwapMarket {
         public
         onlyAdmin
     {
-        noTakerWidhraw = lockValue;
+        noTakerWithdraw = lockValue;
     }
     
     function lpMarginWithdrawal(uint amount)

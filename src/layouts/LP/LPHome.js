@@ -8,6 +8,7 @@ import BookDataContainer from './BookDataContainer'
 import MarginsContainer from './MarginsContainer'
 import RatesContainer from './RatesContainer'
 import LPPNLForm from './LPPnlForm'
+import WithdrawForm from '../Withdraw/WithdrawForm'
 
 class LPHome extends Component {
   constructor(props, context) {
@@ -68,11 +69,7 @@ class LPHome extends Component {
             <br/>
             <p>Change LP </p>
             <ContractForm contract="SwapMarket" method="changelp"/>
-            <p>Current Balance</p>
-            <ContractData contract="SwapMarket" method="balances" methodArgs={[this.props.accounts[0]]}/>
-            <label>Collect Balance 
-              <ContractForm contract="SwapMarket" method="withdrawBalance" />
-            </label>
+            <WithdrawForm />
           </div>
 	    	</div>
       </main>
