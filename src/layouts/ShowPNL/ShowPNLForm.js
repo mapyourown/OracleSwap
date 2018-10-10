@@ -58,7 +58,10 @@ class ShowPNLForm extends Component {
       //console.log(events)
       events.forEach(function(element) {
         if (element.returnValues._id == id)
-          pricedata.push({blockNum: element.blockNumber, price: element.returnValues._price})
+          pricedata.push({
+            blockNum: element.blockNumber, 
+            price: element.returnValues._price, 
+            ratio: element.returnValues._ratio})
       }, this);
       this.priceHistory[id] = pricedata
     }.bind(this));

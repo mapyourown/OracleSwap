@@ -25,7 +25,7 @@ class Home extends Component {
               <li><a href="/make">Liquidity Provider Page</a></li>
               <li><a href="/take">Taker Page </a></li>
               <li><a href="/oracle">Show Oracle</a></li>
-              <li><a href="/multi">Admin Page</a></li>
+              <li><a href="/admin">Admin Page</a></li>
             </ul>
           </div>          
         </div>

@@ -25,6 +25,7 @@ class MultiOracle extends Component {
 
     this.assetKeys = {}
     this.priceKeys = {}
+    this.pastKeys = {}
 
     this.findAssets()
   }
@@ -44,17 +45,19 @@ class MultiOracle extends Component {
       events.forEach(function(element) {
         var values = element.returnValues
         //console.log(values)
-        this.addAsset(values._id, values._name, values._price, values._basis, values._vol)
+        this.addAsset(values._id)
       }, this);
     }.bind(this));
   }
 
-  addAsset(id, name, price, basis, vol) {
+  addAsset(id) {
     //console.log(this.contracts.MultiOracle.methods)
     var assetKey = this.contracts.MultiOracle.methods.assets.cacheCall(id)
-    var priceKey = this.contracts.MultiOracle.methods.getPrices.cacheCall(id)
+    var priceKey = this.contracts.MultiOracle.methods.getCurrentPrices.cacheCall(id)
+    var pastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(id)
     this.assetKeys[id] = assetKey;
     this.priceKeys[id] = priceKey;
+    this.pastKeys[id] = pastKey;
   }
 
   handleInputChange(event) {
@@ -73,10 +76,12 @@ class MultiOracle extends Component {
     Object.keys(this.assetKeys).forEach(function (id) {
       assets[id] = {}
       if (this.assetKeys[id] in this.props.contracts.MultiOracle.assets 
-        && this.priceKeys[id] in this.props.contracts.MultiOracle.getPrices)
+        && this.priceKeys[id] in this.props.contracts.MultiOracle.getCurrentPrices
+        && this.pastKeys[id] in this.props.contracts.MultiOracle.getPastPrices)
       {
           assets[id] = this.props.contracts.MultiOracle.assets[this.assetKeys[id]].value
-          assets[id].oraclePrices = this.props.contracts.MultiOracle.getPrices[this.priceKeys[id]].value
+          assets[id].prices = this.props.contracts.MultiOracle.getCurrentPrices[this.priceKeys[id]].value
+          assets[id].pastPrices = this.props.contracts.MultiOracle.getPastPrices[this.pastKeys[id]].value
       }
     }, this);
 
@@ -106,7 +111,6 @@ class MultiOracle extends Component {
             <ContractForm contract="MultiOracle" method="setSettlePrice" />
             <p>Set Basis (4 decimal places)</p>
             <ContractForm contract="MultiOracle" method="setBasis" />
-
             <h3>Pause All Contracts</h3>
             <ContractForm contract="SwapMarket" method="pause" sendArgs={{from: this.props.accounts[0]}}/>
           </div>
@@ -139,13 +143,14 @@ function DisplayAssets(props) {
         <li key={id.toString()}>
           <h3>Name: {hex_to_ascii(props.assets[id].name)} </h3>
           <p>ID: {id.toString()} </p>
-          <p>This week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.current)}</p>
-          <p>Leverage Ratio: {props.assets[id].leverageRatio/1e6}</p>
-          <p>Current Basis: {props.assets[id].currentBasis/10000}</p>
-          <p>Next Basis: {props.assets[id].nextBasis/10000}</p>
+          <p>This week prices: {DisplayWeekPrices(props.assets[id].prices.currentPrices)}</p>
+          <p>Leverage Ratios : {DisplayWeekPrices(props.assets[id].prices.lRatios)}</p>
+          <p>Current Weekly Basis: {props.assets[id].currentBasis/10000}</p>
+          <p>Next Weekly Basis: {props.assets[id].nextBasis/10000}</p>
           <p>Last Day?: {props.assets[id].isFinalDay ? "Yes" : "No"}</p>
           <p>Current Day ID: {props.assets[id].currentDay} </p>
-          <p>Last week prices: {DisplayWeekPrices(props.assets[id].oraclePrices.previous)}</p>
+          <p>Last week prices: {DisplayWeekPrices(props.assets[id].pastPrices.pastPrices)}</p>
+          <p>Last week leverage ratios: {DisplayWeekPrices(props.assets[id].pastPrices.pastLRatios)}</p>
         </li>
       );
     }
@@ -163,7 +168,7 @@ function DisplayWeekPrices(priceArray) {
   var middleString;
   middleString = "[ "
   priceArray.forEach(function (price) {
-    middleString = middleString + (price / 1000000).toString() + ' '
+    middleString = middleString + (price / 1e6).toString() + ' '
   });
   middleString = middleString + "]"
   return middleString;
@@ -178,22 +183,5 @@ function hex_to_ascii(str1)
   }
   return str;
  }
-
-/*function DisplayReturns(props)
-{
-  var returns = this.props.returns
-  return(
-    <div>
-      <p>Day 0: {returns[0]}</p>
-      <p>Day 1: {returns[1]}</p>
-      <p>Day 2: {returns[2]}</p>
-      <p>Day 3: {returns[3]}</p>
-      <p>Day 4: {returns[4]}</p>
-      <p>Day 5: {returns[5]}</p>
-      <p>Day 6: {returns[6]}</p>
-      <p>Day 7: {returns[7]}</p>
-    </div>
-  );
-}*/
 
 export default MultiOracle

@@ -1,5 +1,3 @@
-var OracleFactory = artifacts.require("./OracleFactory.sol");
-var Oracle = artifacts.require("./Oracle.sol");
 var SwapMarket = artifacts.require("./SwapMarket.sol");
 var MultiOracle = artifacts.require("./MultiOracle.sol")
 

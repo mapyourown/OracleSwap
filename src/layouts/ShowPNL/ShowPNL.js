@@ -35,8 +35,6 @@ class ShowPNL extends Component {
       pendingSpinner = ''
     }
 
-    console.log(this.props)
-
     var subcontract = this.props.subcontract
 
     var settleTime = this.props.settleTime
@@ -44,6 +42,7 @@ class ShowPNL extends Component {
 
     var isSettlePeriod;
 
+    // normally just see if oracle time is newer, however this does not work if the settle time is wrong
     if (settleTime != 0)
       isSettlePeriod = (oracleTime > settleTime)
     else
@@ -55,10 +54,10 @@ class ShowPNL extends Component {
     
     var basis = this.props.assetData.currentBasis
     var assetPrice = this.props.assetPrice
-    var assetWeekPrices = this.props.assetWeek
+    var assetWeekPrices = this.props.assetWeek.pastPrices
     var ethPrice = this.props.ethPrice
-    var ethWeekPrices = this.props.ethWeek
-
+    var ethWeekPrices = this.props.ethWeek.pastPrices
+    var leverageRatio = this.props.assetWeek.pastLRatios[subcontract.initialDay]/1e6
     var assetStart = this.props.assetStart //assetWeekPrices[subcontract.initialDay]
     var ethStart = this.props.ethStart //ethWeekPrices[subcontract.initialDay]
 
@@ -94,7 +93,7 @@ class ShowPNL extends Component {
       assetReturn = assetPrice*1.0/assetWeekPrices[subcontract.initialDay] - 1
       ethReturn = ethPrice/ethWeekPrices[subcontract.initialDay]
     }
-    var leverageRatio = this.props.assetData.leverageRatio/1e6
+    
     var ETHRawPNL = (rmAmount * leverageRatio * assetReturn) / ethReturn
     var pnl;
     var basisFee = basis*(1.0/10000)*rmAmount
@@ -107,9 +106,8 @@ class ShowPNL extends Component {
     else
     {
       rate = rates.currentLong*(1.0/10000)
-      pnl = -1.0* (ETHRawPNL + basisFee + rate*rmAmount)
+      pnl = -1.0* (ETHRawPNL + basisFee) + rate*rmAmount
     }
-    console.log(ethPrice);
 
     return (
       <div>
@@ -123,8 +121,8 @@ class ShowPNL extends Component {
         <p>Taker Margin: {takerMarginAmount}</p>
         <p>LP Side: {side}</p>
         <p>First Day ID: {subcontract.initialDay}</p>
-        <p>First Day Asset Price: {assetStart ? assetStart/1000000 : assetWeekPrices[subcontract.initialDay] / 1000000}</p>
-        <p>First Day ETH Price: {ethStart ? ethStart / 1000000 : ethWeekPrices[subcontract.initialDay] / 1000000}</p>
+        <p>First Day Asset Price: {assetStart ? assetStart/1e6 : assetWeekPrices[subcontract.initialDay] / 1e6}</p>
+        <p>First Day ETH Price: {ethStart ? ethStart / 1e6 : ethWeekPrices[subcontract.initialDay] / 1e6}</p>
         <p>Final Asset Price: {assetPrice / 1000000} </p>
         <p>Final ETH Price: {ethPrice / 1000000} </p>
         <p>Leverage Ratio: {leverageRatio}</p>

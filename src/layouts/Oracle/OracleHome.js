@@ -8,9 +8,6 @@ import React, { Component } from 'react'
 class OracleHome extends Component {
   constructor(props, context) {
     super(props);
-    console.log('props', props);
-    console.log('context', context);
-    console.log(this.props.accounts[0])
 
     this.contracts = context.drizzle.contracts
     this.drizzle = context.drizzle
@@ -39,12 +36,12 @@ class OracleHome extends Component {
         toBlock: 'latest'
       }
     ).then(function(events) { 
-      console.log(events)
       events.forEach(function(element) {
         if (element.returnValues._id == id)
           pricedata.push( {
             blockNum: element.blockNumber, 
             price: element.returnValues._price, 
+            leverageRatio: element.returnValues._ratio,
             time: element.returnValues._timestamp})
       }, this);
       this.priceHistory[id] = pricedata
@@ -94,9 +91,8 @@ function DisplayAssetData(props) {
       <div>
         <h3>Name: {hex_to_ascii(data.name)} </h3>
         <p>ID: {data.id.toString()} </p>
-        <p>Leverage Ratio: {data.leverageRatio/1000000}</p>
-        <p>Current Basis: {data.currentBasis/10000}</p>
-        <p>Next Basis: {data.nextBasis}</p>
+        <p>Current Weekly Basis: {data.currentBasis/1e4}</p>
+        <p>Next Basis: {data.nextBasis/1e4}</p>
         <p>Last Day?: {data.isFinalDay ? "Yes" : "No"}</p>
         <p>Current Day ID: {data.currentDay} </p>
       </div>
@@ -122,7 +118,8 @@ function DisplayPriceLogHistory(props) {
     var date = dateFromTimestamp(item.time)
     return(
         <li key={index.toString()}>
-          <p>Block Number: {item.blockNum} Price: {item.price/1000000} Time: {date.date} {date.time} local time</p>
+          <p>Block Number: {item.blockNum} Price: {item.price/1e6} Leverage Ratio: {item.leverageRatio/1e6}</p>
+          <p> Time: {date.date} {date.time} local time</p>
         </li>
       );
   });
@@ -132,16 +129,6 @@ function DisplayPriceLogHistory(props) {
       <ul>{listitems}</ul>
     </div>
   );
-}
-
-function DisplayWeekPrices(priceArray) {
-  var middleString;
-  middleString = "[ "
-  priceArray.forEach(function (price) {
-    middleString = middleString + price.toString() + ' '
-  });
-  middleString = middleString + "]"
-  return middleString;
 }
 
 function hex_to_ascii(str1)

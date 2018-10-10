@@ -22,7 +22,7 @@ class LPPnlForm extends Component {
     this.assetKey = this.contracts.MultiOracle.methods.assets.cacheCall(this.assetID)
     this.ethKey = this.contracts.MultiOracle.methods.assets.cacheCall(0)
     this.assetPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
-    this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
+    this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(0)
     this.bookKey = this.contracts.SwapMarket.methods.books.cacheCall(this.props.accounts[0])
     this.defaultRatesKey = this.contracts.SwapMarket.methods.defaultRates.cacheCall()
     this.getOracleLogs = this.getOracleLogs.bind(this)
@@ -57,7 +57,11 @@ class LPPnlForm extends Component {
     ).then(function(events) { 
       events.forEach(function(element) {
         if (element.returnValues._id == id)
-          pricedata.push({blockNum: element.blockNumber, price: element.returnValues._price})
+          pricedata.push({
+            blockNum: element.blockNumber, 
+            price: element.returnValues._price,
+            ratio: element.returnValues._ratio
+          })
       }, this);
       this.priceHistory[id] = pricedata
     }.bind(this));
@@ -75,8 +79,6 @@ class LPPnlForm extends Component {
     }
     this.drizzle.addContract(config)
     this.keys = {};
-    /*this.keys.basisKey = this.contracts.SPX_Oracle.methods.basis.cacheCall()*/
-    console.log(this.drizzle.contracts)
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
     this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.props.accounts[0])
     this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.props.accounts[0])
@@ -164,7 +166,7 @@ class LPPnlForm extends Component {
 
     return (
       <div>
-        <ShowPNL assetData={assetData} ethData={ethData} defalutRates={defaultRates} lpRates={rates} subcontract={subcontract}  
+        <ShowPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} lpRates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}

@@ -199,10 +199,9 @@ contract SwapMarket {
         Book b = Book(books[lp]);
         uint8 currentDay;
         bool isFinal;
-        ( , isFinal, , , currentDay, , ,) = oracle.assets(ASSET_ID);
+        ( , isFinal, , , currentDay, ,) = oracle.assets(ASSET_ID);
         b.firstPrice(currentDay);
-        uint currentPrice;
-        (, , currentPrice) = oracle.getPrices(ASSET_ID);
+        uint currentPrice = oracle.getCurrentPrice(ASSET_ID);
         emit FirstPrice(lp, currentPrice);
     }
 
@@ -221,16 +220,14 @@ contract SwapMarket {
         dailyReturns = blank;
         uint numDays = 8;
 
-        uint assetPrice;
+        uint assetPrice = oracle.getCurrentPrice(ASSET_ID);
         uint[8] memory assetPastWeek;
-        (, assetPastWeek, assetPrice) = oracle.getPrices(ASSET_ID);
+        uint[8] memory lrPastWeek;
+        (lrPastWeek, assetPastWeek) = oracle.getPastPrices(ASSET_ID);
 
-        uint ethPrice;
+        uint ethPrice = oracle.getCurrentPrice(0);
         uint[8] memory ethPastweek;
-        (, ethPastweek, ethPrice) = oracle.getPrices(0);
-
-        uint leverageRatio;
-        ( , , , , , , ,leverageRatio) = oracle.assets(ASSET_ID);
+        (, ethPastweek) = oracle.getPastPrices(0);
 
         for (uint8 i = 0; i < numDays; i++)
         {
@@ -238,7 +235,7 @@ contract SwapMarket {
                 continue;
 
             int assetReturn = ( int(assetPrice.mul(1 ether)) / int(assetPastWeek[i]) ) - (1 ether);
-            int leveraged = assetReturn * int(leverageRatio) / 1e6;
+            int leveraged = assetReturn * int(lrPastWeek[i]) / 1e6;
             int pnl = (leveraged * int(ethPastweek[i])) / int(ethPrice);
 
             dailyReturns[i] = pnl;
@@ -269,7 +266,7 @@ contract SwapMarket {
             settleRates[1] = rates[lp].currentShort;
         }
         int16 basis;
-        (, , , , , basis, , ) = oracle.assets(ASSET_ID);
+        (, , , , , basis, ) = oracle.assets(ASSET_ID);
         settleRates[2] = basis;
         
         b.settle(dailyReturns, settleRates, longProfited);
@@ -293,7 +290,7 @@ contract SwapMarket {
         require(longRate < 100 &&  shortRate < 100); 
         require(longRate > -100 && shortRate > -100);
         bool finalDay;
-        (, finalDay, , , , , ,) = oracle.assets(ASSET_ID);
+        (, finalDay, , , , ,) = oracle.assets(ASSET_ID);
         require(!finalDay); // Rates locked in by day before
         lpRates storage mRates = rates[msg.sender];
         mRates.nextLong = longRate;
@@ -315,7 +312,7 @@ contract SwapMarket {
     {
         Book b = Book(books[lp]);
         uint lastSettleTime;
-        (, , , lastSettleTime, , , ,) = oracle.assets(ASSET_ID);
+        (, , , lastSettleTime, , ,) = oracle.assets(ASSET_ID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, OPEN_FEE, CANCEL_FEE);
     }
     
