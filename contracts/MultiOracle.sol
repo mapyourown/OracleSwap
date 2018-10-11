@@ -18,6 +18,7 @@ contract MultiOracle {
     uint[8][] public lastWeekPrices; // includes 6 decimal places, 120000000 = 12.000000
     uint[8][] public leverageRatios; // 6 decimal places
     uint[8][] public lastLeverageRatios;
+    bool[] public isCryptoSettled;
     mapping(address => bool) public readers;
     
     modifier onlyAdmin()
@@ -29,13 +30,13 @@ contract MultiOracle {
     event PriceUpdated(uint indexed _id, bytes32 indexed _name, uint _price, uint _ratio, uint _timestamp);
     event LeverageRatioUpdated(uint indexed _id, uint _ratio);
     event BasisUpdated(uint indexed _id, bytes32 indexed _name, int16 _basis);
-    event AssetAdded(uint indexed _id, bytes32 _name, uint _price, int16 _basis, uint _vol);
+    event AssetAdded(uint indexed _id, bytes32 _name, uint _price, int16 _basis, uint _vol, bool _cryptoSettled);
     event PriceCorrected(uint indexed _id, bytes32 indexed _name, uint _price, uint _leverageRatio);
     
     constructor (uint ethPrice, int16 ethBasis, uint ethLR) public {
         admin = msg.sender;
         // first asset is always ETH
-        addAsset("ETH", ethPrice, ethBasis, ethLR);
+        addAsset("ETH", ethPrice, ethBasis, ethLR, false);
     }
 
     function addReader(address newReader)
@@ -45,7 +46,7 @@ contract MultiOracle {
         readers[newReader] = true;
     }
     
-    function addAsset(bytes32 name, uint startPrice, int16 basis, uint ratio)
+    function addAsset(bytes32 name, uint startPrice, int16 basis, uint ratio, bool isCrypto)
         public
         returns (uint id)
     {
@@ -60,6 +61,7 @@ contract MultiOracle {
         asset.lastSettlePriceTime = block.timestamp;
         asset.currentBasis = basis;
         asset.nextBasis = basis;
+        isCryptoSettled.push(isCrypto);
         assets.push(asset);
 
         // set up price and LR arrays
@@ -74,7 +76,7 @@ contract MultiOracle {
         prices.push(_prices);
         leverageRatios.push(_ratios);
 
-        emit AssetAdded(assets.length - 1, name, startPrice, basis, ratio);
+        emit AssetAdded(assets.length - 1, name, startPrice, basis, ratio, isCrypto);
         emit PriceUpdated(assets.length - 1, name, startPrice, ratio, block.timestamp);
         return assets.length - 1;
     }

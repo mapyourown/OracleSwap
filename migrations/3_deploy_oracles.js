@@ -15,13 +15,13 @@ module.exports = function(deployer, network, accounts) {
 	}).then(function(instance) {
 		oracle = instance;
 		// SPX
-		return oracle.addAsset('0x535058', 2000000000, 2, 15000000); 
+		return oracle.addAsset('0x535058', 2000000000, 2, 15000000, false); 
 	}).then(function () {
 		//BTC
-		return oracle.addAsset('0x425443', 6500000000, 3, 2000000);
+		return oracle.addAsset('0x425443', 6500000000, 3, 2000000, false);
 	}).then(function () {
 		//BTC ETH
-		return oracle.addAsset('0x4254432f455448', 30000000, 4, 1500000);
+		return oracle.addAsset('0x4254432f455448', 30000000, 4, 1500000, true);
 	}).then(function (result) {
 		return deployer.deploy(SwapMarket, oracle.address, 1);
 	}).then(function (instance) {

@@ -128,6 +128,11 @@ class MultiOracle extends Component {
             <h3>3. Settle Liquidity Provider</h3>
             <ContractForm contract="SwapMarket" method="settle" sendArgs={{from: this.props.accounts[0]}}/>
           </div>
+
+          <div className="pure-u-1-1">
+            <h2>Fix Price</h2>
+            <ContractForm contract="MultiOracle" method="editPrice" />
+          </div>
           
 	    	</div>
       </main>
