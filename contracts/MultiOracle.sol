@@ -36,7 +36,7 @@ contract MultiOracle {
     constructor (uint ethPrice, int16 ethBasis, uint ethLR) public {
         admin = msg.sender;
         // first asset is always ETH
-        addAsset("ETH", ethPrice, ethBasis, ethLR, false);
+        addAsset("ETHUSD", ethPrice, ethBasis, ethLR, false);
     }
 
     function addReader(address newReader)
@@ -159,10 +159,11 @@ contract MultiOracle {
     function getCurrentPrice(uint id)
         public
         view
-        returns (uint)
+        returns (uint price, int16 basis)
     {
         require (msg.sender == admin || readers[msg.sender]);    
-        return prices[id][assets[id].currentDay];
+        price =  prices[id][assets[id].currentDay];
+        basis = assets[id].currentBasis;
     }
 
     function getPastPrices(uint id)

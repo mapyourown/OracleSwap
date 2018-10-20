@@ -382,13 +382,11 @@ contract Book {
     
 
     // TOOD: pending
-    function settle(int[8] assetReturns, int16[3] rates, bool longProfited)
+    function settle(int[8] longReturns, int[8] shortReturns, bool longProfited)
         public
         onlyAdmin
     {
-        // rates is [longFinancing, shortFinancing, basis]
-        /*if (lpMargin < verifiedlpRequiredMargin())
-            makerDefault(cancelFee);*/
+
         uint burnMargin = 0;
         bytes32 iter;
         
@@ -407,19 +405,18 @@ contract Book {
                 iter = node.prev;
              
             int makerPNL;
-            int assetReturn = (assetReturns[node.k.InitialDay] * int(node.k.ReqMargin)) / (1 ether);    
-            node.k.InitialDay = 0;
-            uint toTake;
-
+            int intMargin = int(node.k.ReqMargin);
             if (node.k.Side)
-            {
-                makerPNL = assetReturn + (int(node.k.ReqMargin) * rates[2])/10000 + (int(node.k.ReqMargin) * rates[1])/10000;
-            }
+                makerPNL = (longReturns[node.k.InitialDay] * intMargin)/1e18;
             else
-            {
-                // financingFee = (int(node.k.ReqMargin) * rates[0])/1000;
-                makerPNL = (-1) * (assetReturn + (int(node.k.ReqMargin) * rates[2])/10000) + (int(node.k.ReqMargin) * rates[0])/10000;
-            }
+                makerPNL = (shortReturns[node.k.InitialDay] * intMargin)/1e18;
+
+            if (makerPNL > intMargin)
+                makerPNL = intMargin;
+            if (makerPNL < -1 * intMargin)
+                makerPNL = -1 * intMargin;
+            
+            uint toTake;
 
             uint absolutePNL;
             if (makerPNL > 0)

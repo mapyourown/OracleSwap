@@ -20,9 +20,6 @@ class MultiOracle extends Component {
     this.findAssets = this.findAssets.bind(this)
     this.addAsset = this.addAsset.bind(this)
 
-    this.return0Key = this.contracts.SwapMarket.methods.dailyReturns.cacheCall(0)
-    this.return1Key = this.contracts.SwapMarket.methods.dailyReturns.cacheCall(1)
-
     this.assetKeys = {}
     this.priceKeys = {}
     this.pastKeys = {}
@@ -85,13 +82,6 @@ class MultiOracle extends Component {
       }
     }, this);
 
-    var returns = {first: '', second: ''};
-    if (this.return0Key in this.props.contracts.SwapMarket.dailyReturns)
-      returns.first = this.props.contracts.SwapMarket.dailyReturns[this.return0Key].value
-
-    if (this.return1Key in this.props.contracts.SwapMarket.dailyReturns)
-      returns.second = this.props.contracts.SwapMarket.dailyReturns[this.return1Key].value
-
   	return (
   	  <main className="container">
         <div className="pure-g">
@@ -106,6 +96,7 @@ class MultiOracle extends Component {
             <p>Add Asset</p>
             <ContractForm contract="MultiOracle" method="addAsset" />
             <p>Set Intraweek Price (6 decimal places)</p>
+            <p>Check the box if final intraweek price (Tuesday) </p>
             <ContractForm contract="MultiOracle" method="setIntraweekPrice" />
             <p>Set Settle Price (6 decimal places)</p>
             <ContractForm contract="MultiOracle" method="setSettlePrice" />
@@ -118,15 +109,10 @@ class MultiOracle extends Component {
           <div className="pure-u-1-1">
             <GetLPs />
             <h2>Settlement Functions</h2>
-            <h3>1. First Price</h3>
-            <ContractForm contract="SwapMarket" method="firstPrice" sendArgs={{from: this.props.accounts[0]}}/>
-            <h3>2. Calculate Returns</h3>
-            <p>Day 0 return: {returns.first / 1e18}</p>
-            <p>Day 1 return: {returns.second / 1e18} </p>
-            <p>Weekly Return: <ContractData contract="SwapMarket" method="weeklyReturn"/></p>
-            <ContractForm contract="SwapMarket" method="computeReturns" sendArgs={{from: this.props.accounts[0]}}/>
-            <h3>3. Settle Liquidity Provider</h3>
+            <h3>Settle Liquidity Provider</h3>
             <ContractForm contract="SwapMarket" method="settle" sendArgs={{from: this.props.accounts[0]}}/>
+            <h3>First Price</h3>
+            <ContractForm contract="SwapMarket" method="firstPrice" sendArgs={{from: this.props.accounts[0]}}/>
           </div>
 
           <div className="pure-u-1-1">

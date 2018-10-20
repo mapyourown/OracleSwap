@@ -31,16 +31,16 @@ contract SwapMarket {
     lpRates public defaultRates;
     
     uint maxOrderLimit;
-
-    int[8] public dailyReturns;
-    int public weeklyReturn;
-    bool public longProfited;
+    uint public EthLeveraging; // 6 extra decimals
     //lp specific info
     mapping(address => address) public books;
     mapping(address => address) public lpChanges;
     mapping (address => lpRates) public rates;
     mapping(address => uint) public openMargins;
     mapping(address => uint) public balances;
+
+    int[8] public LongReturns;
+    int[8] public ShortReturns;
     
     uint8 constant public marginSafetyFactor = 100;
     
@@ -201,11 +201,12 @@ contract SwapMarket {
         bool isFinal;
         ( , isFinal, , , currentDay, ,) = oracle.assets(ASSET_ID);
         b.firstPrice(currentDay);
-        uint currentPrice = oracle.getCurrentPrice(ASSET_ID);
+        uint currentPrice;
+        (currentPrice, ) = oracle.getCurrentPrice(ASSET_ID);
         emit FirstPrice(lp, currentPrice);
     }
 
-    function computeReturns()
+    /*function computeReturns()
         public
         onlyAdmin
     {
@@ -220,28 +221,72 @@ contract SwapMarket {
         dailyReturns = blank;
         uint numDays = 8;
 
-        uint assetPrice = oracle.getCurrentPrice(ASSET_ID);
+        uint assetPrice;
+        int16 assetBasis;
+        (assetPrice, assetBasis) = oracle.getCurrentPrice(ASSET_ID);
         uint[8] memory assetPastWeek;
         uint[8] memory lrPastWeek;
         (lrPastWeek, assetPastWeek) = oracle.getPastPrices(ASSET_ID);
 
-        uint ethPrice = oracle.getCurrentPrice(0);
+        uint ethPrice;
+        (ethPrice, ) = oracle.getCurrentPrice(0);
         uint[8] memory ethPastweek;
         (, ethPastweek) = oracle.getPastPrices(0);
+
+        // compute RM * LR * 1/Eth_t;
+
 
         for (uint8 i = 0; i < numDays; i++)
         {
             if (assetPastWeek[i] == 0)
                 continue;
 
-            int assetReturn = ( int(assetPrice.mul(1 ether)) / int(assetPastWeek[i]) ) - (1 ether);
-            int leveraged = assetReturn * int(lrPastWeek[i]) / 1e6;
-            int pnl = (leveraged * int(ethPastweek[i])) / int(ethPrice);
+            // compute asset appreciation A_1/A_0 - 1
+            int assetReturn = ( int(assetPrice.mul(1 ether)) / int(assetPastWeek[i])) - (1 ether);
+            int leveraged = assetReturn * int(lrPastWeek[i]) / 1e6; 
+            int basisFee = ((1 ether) * lrPastWeek[i] *  assetBasis) / 1e4;
+            int pnl = ((leveraged - basisFee) * int(ethPastweek[i])) / int(ethPrice); // convert back to ETH
 
             dailyReturns[i] = pnl;
         }
         weeklyReturn = dailyReturns[0];
         longProfited = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));
+    }*/
+
+    // returns in terms of the maker
+    function computeReturns(int16 longRate, int16 shortRate)
+        internal
+        view
+        returns(int[8] longReturns, int[8] shortReturns, bool longProfit)
+    {
+        uint assetPrice;
+        int16 assetBasis;
+        (assetPrice, assetBasis) = oracle.getCurrentPrice(ASSET_ID);
+        uint[8] memory assetPastWeek;
+        uint[8] memory lrPastWeek;
+        (lrPastWeek, assetPastWeek) = oracle.getPastPrices(ASSET_ID);
+
+        uint ethPrice;
+        (ethPrice, ) = oracle.getCurrentPrice(0);
+        uint[8] memory ethPastweek;
+        (, ethPastweek) = oracle.getPastPrices(0);
+
+        //
+        for (uint8 i = 0; i < 8; i++)
+        {
+            if (assetPastWeek[i] == 0)
+                continue;
+
+            //int leverage = int(lrPastWeek[i] * ethPastweek[i])) / int(ethPrice);
+            int assetReturn = int(assetPrice.mul(1 ether))/ int(assetPastWeek[i]) - (1 ether);
+            int longFee = ((1 ether) * int(-1 * assetBasis + shortRate))/1e4;
+            int shortFee = ((1 ether) *  int(assetBasis + longRate))/1e4;
+            longReturns[i] = ((assetReturn + longFee) * int(lrPastWeek[i]) * int(ethPastweek[i]) ) / int(ethPrice * 1e6);
+            shortReturns[i] = (((-1 * assetReturn) + shortFee) * int(lrPastWeek[i]) * int(ethPastweek[i]) ) / int(ethPrice * 1e6);
+        }
+        LongReturns = longReturns;
+        ShortReturns = shortReturns;
+        longProfit = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));
     }
     
     function settle(address lp)
@@ -251,25 +296,29 @@ contract SwapMarket {
         if (books[lp] == 0x0)
             return; 
         Book b = Book(books[lp]);
-        int16[3] memory settleRates;
+        int16 longRate;
+        int16 shortRate;
         lpRates storage mRates = rates[lp];
 
-        // Give lps default rates
+        // Give lps default rates if they haven't changed theirs
         if (mRates.currentLong == 0 && mRates.currentShort == 0)
         {
-            settleRates[0] = defaultRates.currentLong;
-            settleRates[1] = defaultRates.currentShort;
+            longRate = defaultRates.currentLong;
+            shortRate = defaultRates.currentShort;
         }
         else
         {
-            settleRates[0] = rates[lp].currentLong;
-            settleRates[1] = rates[lp].currentShort;
+            longRate = mRates.currentLong;
+            shortRate = mRates.currentShort;
         }
-        int16 basis;
-        (, , , , , basis, ) = oracle.assets(ASSET_ID);
-        settleRates[2] = basis;
+
+        int[8] memory longReturns;
+        int[8] memory shortReturns;
+        bool longProfited;
+
+        (longReturns, shortReturns, longProfited) = computeReturns(longRate, shortRate);
         
-        b.settle(dailyReturns, settleRates, longProfited);
+        b.settle(longReturns, shortReturns, longProfited);
         
         mRates.currentLong = mRates.nextLong;
         mRates.currentShort = mRates.nextShort;

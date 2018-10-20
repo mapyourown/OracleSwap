@@ -5,7 +5,7 @@ import {
   AccountData
    } from 'drizzle-react-components'
 import GetLPs from './GetLPs'
-import ShowPNLForm from '../ShowPNL/ShowPNLForm'
+import TakerPNLForm from '../ShowPNL/TakerPNLForm'
 import WithdrawForm from '../Withdraw/WithdrawForm'
 
 class TakerHome extends Component {
@@ -141,7 +141,7 @@ class TakerHome extends Component {
             <br/>
             <h2>Trade Interactions</h2>
             <h3>Calculate Profit </h3>
-            <ShowPNLForm />
+            <TakerPNLForm />
             <h3>Cancel </h3>
             <ContractForm contract="SwapMarket" method="playerCancel" sendArgs={{value: 1000000000000000000}} />
             <br/>

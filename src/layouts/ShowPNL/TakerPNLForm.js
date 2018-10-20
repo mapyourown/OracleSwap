@@ -1,14 +1,14 @@
 import { drizzleConnect } from 'drizzle-react'
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
-import ShowPNL from './ShowPNL'
+import ShowTakerPNL from './ShowTakerPNL'
 import Book from './../../../build/contracts/Book.json'
 
 /*
  * Create component.
  */
 
-class ShowPNLForm extends Component {
+class TakerPNLForm extends Component {
   constructor(props, context) {
     super(props);
 
@@ -162,10 +162,9 @@ class ShowPNLForm extends Component {
 
     return (
       <div>
-        <ShowPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} lpRates={rates} subcontract={subcontract}  
+        <ShowTakerPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} lpRates={rates} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
-          assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}
           settleTime={lastSettleTime}
           lpChangeAddress={lpChangeAddress}
           lp={this.state.makerAddress} id={this.state.subcontractID} />
@@ -174,8 +173,6 @@ class ShowPNLForm extends Component {
           <input name="makerAddress" type="text" value={this.state.makerAddress} onChange={this.handleInputChange} placeholder="LP Address" />
           <input name="bookAddress" type="text" value={this.state.bookAddress} onChange={this.handleInputChange} placeholder="Book Address" />
           <input name="subcontractID" type="text" value={this.state.subcontractID} onChange={this.handleInputChange} placeholder="Subcontract ID" />
-          <input name="startingAssetPrice" type="text" value={this.state.startingAssetPrice} onChange={this.handleInputChange} placeholder="Start Asset Price (optional)" />
-          <input name="startingEthPrice" type="text" value={this.state.startingEthPrice} onChange={this.handleInputChange} placeholder="Start ETH Price (optional)" />
           <input name="finalAssetPrice" type="text" value={this.state.finalAssetPrice} onChange={this.handleInputChange} placeholder="Final Asset Price (optional)" />
           <input name="finalEthPrice" type="text" value={this.state.finalEthPrice} onChange={this.handleInputChange} placeholder="Final ETH Price (optional)" />
           <button key="submit" className="pure-button" type="button" onClick={this.handleSubmit}>View PNL</button>
@@ -185,7 +182,7 @@ class ShowPNLForm extends Component {
   }
 }
 
-ShowPNLForm.contextTypes = {
+TakerPNLForm.contextTypes = {
   drizzle: PropTypes.object
 }
 
@@ -199,4 +196,4 @@ const mapStateToProps = state => {
   }
 }
 
-export default drizzleConnect(ShowPNLForm, mapStateToProps)
+export default drizzleConnect(TakerPNLForm, mapStateToProps)
