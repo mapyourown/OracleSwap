@@ -21,9 +21,9 @@ export function calculatePNL( ethStart,
 	console.log(ethRatio)
 	console.log(CFDReturn)*/
 	if (side)
-		lpPNL = leveragedEth * (CFDReturn + longRate/1e4) / ethRatio
+		lpPNL = leveragedEth * (CFDReturn + shortRate/1e4) / ethRatio
 	else
-		lpPNL = leveragedEth * ((-1.0 * CFDReturn) + shortRate/1e4) / ethRatio
+		lpPNL = leveragedEth * ((-1.0 * CFDReturn) + longRate/1e4) / ethRatio
 
 
 

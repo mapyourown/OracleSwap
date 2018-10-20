@@ -38,9 +38,6 @@ contract SwapMarket {
     mapping (address => lpRates) public rates;
     mapping(address => uint) public openMargins;
     mapping(address => uint) public balances;
-
-    int[8] public LongReturns;
-    int[8] public ShortReturns;
     
     uint8 constant public marginSafetyFactor = 100;
     
@@ -268,8 +265,8 @@ contract SwapMarket {
 
         uint ethPrice;
         (ethPrice, ) = oracle.getCurrentPrice(0);
-        uint[8] memory ethPastweek;
-        (, ethPastweek) = oracle.getPastPrices(0);
+        uint[8] memory ethPastWeek;
+        (, ethPastWeek) = oracle.getPastPrices(0);
 
         //
         for (uint8 i = 0; i < 8; i++)
@@ -278,14 +275,12 @@ contract SwapMarket {
                 continue;
 
             //int leverage = int(lrPastWeek[i] * ethPastweek[i])) / int(ethPrice);
-            int assetReturn = int(assetPrice.mul(1 ether))/ int(assetPastWeek[i]) - (1 ether);
+            int assetReturn = int(assetPrice * (1 ether)/ assetPastWeek[i]) - (1 ether);
             int longFee = ((1 ether) * int(-1 * assetBasis + shortRate))/1e4;
             int shortFee = ((1 ether) *  int(assetBasis + longRate))/1e4;
-            longReturns[i] = ((assetReturn + longFee) * int(lrPastWeek[i]) * int(ethPastweek[i]) ) / int(ethPrice * 1e6);
-            shortReturns[i] = (((-1 * assetReturn) + shortFee) * int(lrPastWeek[i]) * int(ethPastweek[i]) ) / int(ethPrice * 1e6);
+            longReturns[i] = ((assetReturn + longFee) * int(lrPastWeek[i]) * int(ethPastWeek[i]) ) / int(ethPrice * 1e6);
+            shortReturns[i] = (((-1 * assetReturn) + shortFee) * int(lrPastWeek[i]) * int(ethPastWeek[i]) ) / int(ethPrice * 1e6);
         }
-        LongReturns = longReturns;
-        ShortReturns = shortReturns;
         longProfit = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));
     }
     

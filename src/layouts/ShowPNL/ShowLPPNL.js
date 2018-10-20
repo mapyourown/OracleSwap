@@ -55,8 +55,6 @@ class ShowPNL extends Component {
     var ethPrice = this.props.ethPrice
     var ethStart = this.props.ethWeek.pastPrices[subcontract.initialDay]
     var leverageRatio = this.props.assetWeek.pastLRatios[subcontract.initialDay]
-    var assetStart = this.props.assetStart //assetWeekPrices[subcontract.initialDay]
-    var ethStart = this.props.ethStart //ethWeekPrices[subcontract.initialDay]
 
     var rates
     if (this.props.lpRates.currentLong == 0 && this.props.lpRates.currentShort == 0)
@@ -66,10 +64,17 @@ class ShowPNL extends Component {
 
     var sideString;
     var status = 'Ongoing'
+    var showRate;
     if (subcontract.side)
+    {
       sideString = "Long"
+      showRate = rates.currentLong
+    }
     else
+    {
       sideString = "Short"
+      showRate = rates.currentShort
+    }
 
     if (subcontract.isCancelled)
       status = "Cancelled"
@@ -102,36 +107,29 @@ class ShowPNL extends Component {
       leverageRatio,
       basis,
       subcontract.side);
-    /*var basisFee = basis*(1.0/10000)*rmAmount
-    var rate
-    if (subcontract.side)
-    {
-      rate = rates.currentShort*(1.0/10000)
-      pnl = ETHRawPNL + basisFee + rate*rmAmount
-    }
-    else
-    {
-      rate = rates.currentLong*(1.0/10000)
-      pnl = -1.0* (ETHRawPNL + basisFee) + rate*rmAmount
-    }*/
 
     return (
       <div>
-        <p>Subcontract ID: {this.props.id}</p>
+        <p>LP: {this.props.lp}</p>
         <p>Last Subcontract Settlement Time: {settleTime == 0 ? "N/A" : subSettle.date + " " + subSettle.time } ({offset}) </p>
         <p>Last Oracle Settlement Price Time: {oracleSettle.date} {oracleSettle.time} Local Time ({offset})</p>
         <p><strong>{isSettlePeriod ? "This is the settle period" : "This is not the settle period"}</strong></p>
+        <p>Subcontract ID: {this.props.id}</p>
         <p>Required Margin: {rmAmount}</p>
         <p>Taker: {subcontract.taker}</p>
         <p>Taker Margin: {takerMarginAmount}</p>
         <p>LP Side: {sideString}</p>
         <p>First Day ID: {subcontract.initialDay}</p>
-        <p>First Day Asset Price: {assetStart ? assetStart/1e6 : assetWeekPrices[subcontract.initialDay] / 1e6}</p>
+        <p>First Day Asset Price: {assetStart/1e6}</p>
         <p>Final Asset Price: {assetPrice / 1e6} </p>
-        <p>First Day ETH Price: {ethStart ? ethStart / 1e6 : ethWeekPrices[subcontract.initialDay] / 1e6}</p>
+        <p>First Day ETH Price: {ethStart / 1e6}</p>
         <p>Final ETH Price: {ethPrice / 1e6} </p>
         <p>Leverage Ratio: {leverageRatio}</p>
+        <p>Margin Rate: {showRate/1e4} </p>
+        <p>Basis: {basis/1e4}</p>
         <p>LP PNL: {pnl} ETH</p>
+        <p>Taker PNL: {-1.0 * pnl} ETH</p>
+        <p>New Taker Margin: {takerMarginAmount - pnl} ETH</p>
         <p>Status: {status}</p>
         <p>New LP status: {this.props.lpChangeAddress == 0x0 ? "No new LP" : "New LP: " + this.props.lpChangeAddress} </p>
       </div>

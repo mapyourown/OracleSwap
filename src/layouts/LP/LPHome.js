@@ -6,7 +6,7 @@ import {
 import BookDataContainer from './BookDataContainer'
 import MarginsContainer from './MarginsContainer'
 import RatesContainer from './RatesContainer'
-//import LPPNLForm from './LPPnlForm'
+import LPPNLForm from '../ShowPNL/LPPNLForm'
 import WithdrawForm from '../Withdraw/WithdrawForm'
 
 class LPHome extends Component {
@@ -65,7 +65,8 @@ class LPHome extends Component {
 
           <div className="pure-u-1-1">
             <h2>Trade Interactions</h2>
-            
+            <h3>Calculate Profit</h3>
+            <LPPNLForm />
             <p>Cancel </p>
             <ContractForm contract="SwapMarket" method="playerCancel" sendArgs={{value: 1000000000000000000}} />
             <br/>
