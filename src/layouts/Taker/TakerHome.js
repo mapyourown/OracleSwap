@@ -178,11 +178,11 @@ function DisplaySubcontracts(props) {
         <li key={id.toString()}>
           <p>Subcontract ID: {id}</p>
           <p>LP: {props.subcontracts[id].lp}</p>
-          <p>Taker: {props.subcontracts[id].taker}</p>
           <p>Required Margin: {rmAmount}</p>
           <p>Taker Margin: {takerMarginAmount}</p>
           <p>LP Side: {side}</p>
-          <p>First Day ID: {props.subcontracts[id].initialDay}</p>
+          <p>Initial Day ID: {props.subcontracts[id].initialDay}</p>
+          <p>Margin Rate: {props.subcontracts[id].marginRate/1e4}</p>
           <p>Status: {status}</p>
         </li>
       );

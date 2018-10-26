@@ -96,7 +96,6 @@ class MultiOracle extends Component {
             <p>Add Asset</p>
             <ContractForm contract="MultiOracle" method="addAsset" />
             <p>Set Intraweek Price (6 decimal places)</p>
-            <p>Check the box if final intraweek price (Tuesday) </p>
             <ContractForm contract="MultiOracle" method="setIntraweekPrice" />
             <p>Set Settle Price (6 decimal places)</p>
             <ContractForm contract="MultiOracle" method="setSettlePrice" />
@@ -138,7 +137,6 @@ function DisplayAssets(props) {
           <p>Leverage Ratios : {DisplayWeekPrices(props.assets[id].prices.lRatios)}</p>
           <p>Current Weekly Basis: {props.assets[id].currentBasis/10000}</p>
           <p>Next Weekly Basis: {props.assets[id].nextBasis/10000}</p>
-          <p>Last Day?: {props.assets[id].isFinalDay ? "Yes" : "No"}</p>
           <p>Current Day ID: {props.assets[id].currentDay} </p>
           <p>Last week prices: {DisplayWeekPrices(props.assets[id].pastPrices.pastPrices)}</p>
           <p>Last week leverage ratios: {DisplayWeekPrices(props.assets[id].pastPrices.pastLRatios)}</p>

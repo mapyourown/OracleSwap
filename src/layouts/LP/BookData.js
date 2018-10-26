@@ -141,7 +141,6 @@ function DisplaySubcontracts(props) {
           <p>Subcontract ID: {id}</p>
           <p>Required Margin: {rmAmount}</p>
           <p>LP: {props.subcontracts[id].maker}</p>
-          <p>Taker: {props.subcontracts[id].taker}</p>
           <p>Required Margin: {rmAmount}</p>
           <p>Taker Margin: {takerMarginAmount}</p>
           <p>LP Side: {side}</p>

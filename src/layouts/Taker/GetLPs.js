@@ -118,8 +118,6 @@ function DisplayActiveBooks(props) {
           <p>Offered Margin: {(props.activeBooks[lp].margin/(1e18))/(1+ openFee)} ETH</p>
           <p>Current Long Rate: {currentRates['currentLong']/100}% per week</p>
           <p>Current Short Rate: {currentRates['currentShort']/100}% per week</p>
-          <p>Next Long Rate: {props.activeBooks[lp].rates['nextLong']/100}% per week</p>
-          <p>Next Short Rate: {props.activeBooks[lp].rates['nextShort']/100}% per week</p>
           <p>Current Long Margin: {props.activeBooks[lp].bookData['totalLong']/(1e18)} ETH</p>
           <p>Current Short Margin: {props.activeBooks[lp].bookData['totalShort']/(1e18)} ETH</p>
         </li>

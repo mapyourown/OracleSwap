@@ -16,6 +16,7 @@ contract SwapMarket {
     uint8 public OPEN_FEE; // in %
     uint8 public CANCEL_FEE; // in %
     uint16 public BURN_FEE; // in %
+    uint16 public UNBALANCED_FEE;
     address public admin;
 
     bool noTakerWithdraw;
@@ -23,9 +24,6 @@ contract SwapMarket {
     struct lpRates{
         int16 currentLong; // in hundreths of a percent, 40 = 0.0040 weekly
         int16 currentShort; // hundreths of a percent
-        int16 nextLong;
-        int16 nextShort;
-        bool updated;
     }
 
     lpRates public defaultRates;
@@ -65,8 +63,6 @@ contract SwapMarket {
         admin = msg.sender;
         lpRates memory adminRates;
         // todo can't change
-        adminRates.nextLong = 10; // .001
-        adminRates.nextShort = 4; // .0004
         adminRates.currentLong = 10;
         adminRates.currentShort = 4;
 
@@ -108,18 +104,6 @@ contract SwapMarket {
         balances[msg.sender] = balances[msg.sender].add(amount);
         
     }
-    
-    /*function getlpRates(address lp)
-        public
-        view
-        returns (int16 longRate, int16 shortRate, int16 nextLong, int16 nextShort)
-    {
-        lpRates storage mRates = rates[lp];
-        longRate = mRates.currentLong;
-        shortRate = mRates.currentShort;
-        nextLong = mRates.nextLong;
-        nextShort = mRates.nextShort;
-    }*/
 
     function getBookData(address lp)
         public
@@ -138,9 +122,9 @@ contract SwapMarket {
         public
         view
         returns (
-            address taker,
             uint takerMargin,
             uint reqMargin,
+            int16 marginRate,
             uint8 initialDay,
             bool side, 
             bool isCancelled, 
@@ -149,12 +133,12 @@ contract SwapMarket {
         address book = books[lp];
         if (book != 0x0) {
             Book b = Book(book);
-            (taker, takerMargin, reqMargin, initialDay,
+            (takerMargin, reqMargin, marginRate, initialDay,
                 side, isCancelled, isBurned) = b.getSubcontract(id);
         }
     }
     
-    function take(address lp, uint amount, bool side)
+    function take(address lp, uint amount, bool takerSide)
         public
         payable
         pausable
@@ -168,7 +152,7 @@ contract SwapMarket {
         require(openMargins[lp] >= feeAmount);
 
         uint freeMargin = 0;
-        if (side) // taker is long, lp is short
+        if (takerSide) // taker is long, lp is short
         {
             if (lpLong > lpShort)
                 freeMargin = lpLong - lpShort;
@@ -183,7 +167,22 @@ contract SwapMarket {
         uint remainder = openMargins[lp].sub((msg.value - freeMargin) + feeAmount);
         openMargins[lp] = remainder;
         collectedFees = collectedFees.add(feeAmount);
-        bytes32 newId = book.take.value(msg.value + (msg.value - freeMargin))(msg.sender, msg.value, side);
+        int16 rate;
+        if (takerSide)
+        {
+            if (rates[lp].currentShort == 0 && rates[lp].currentLong == 0)
+                rate = defaultRates.currentLong;
+            else
+                rate = rates[lp].currentLong;
+        }
+        else
+        {
+            if (rates[lp].currentShort == 0 && rates[lp].currentLong == 0)
+                rate = defaultRates.currentShort;
+            else
+                rate = rates[lp].currentShort;
+        }
+        bytes32 newId = book.take.value(msg.value + (msg.value - freeMargin))(msg.sender, msg.value, takerSide, rate);
         emit OrderTaken(lp, msg.sender, newId);
     }
 
@@ -195,8 +194,7 @@ contract SwapMarket {
             return;
         Book b = Book(books[lp]);
         uint8 currentDay;
-        bool isFinal;
-        ( , isFinal, , , currentDay, ,) = oracle.assets(ASSET_ID);
+        ( , , , currentDay, ,) = oracle.assets(ASSET_ID);
         b.firstPrice(currentDay);
         uint currentPrice;
         (currentPrice, ) = oracle.getCurrentPrice(ASSET_ID);
@@ -251,11 +249,15 @@ contract SwapMarket {
     }*/
 
     // returns in terms of the maker
-    function computeReturns(int16 longRate, int16 shortRate)
+    function computeReturns()
         internal
         view
-        returns(int[8] longReturns, int[8] shortReturns, bool longProfit)
+        returns(uint[8] leverages, int[8] longReturns, bool longProfit)
     {
+
+
+        // Want: LR * ETH/ETH for every day
+        // Want: A_1/A_0 - 1 - basis for every day.
         uint assetPrice;
         int16 assetBasis;
         (assetPrice, assetBasis) = oracle.getCurrentPrice(ASSET_ID);
@@ -268,18 +270,13 @@ contract SwapMarket {
         uint[8] memory ethPastWeek;
         (, ethPastWeek) = oracle.getPastPrices(0);
 
-        //
         for (uint8 i = 0; i < 8; i++)
         {
             if (assetPastWeek[i] == 0)
                 continue;
-
-            //int leverage = int(lrPastWeek[i] * ethPastweek[i])) / int(ethPrice);
-            int assetReturn = int(assetPrice * (1 ether)/ assetPastWeek[i]) - (1 ether);
-            int longFee = ((1 ether) * int(-1 * assetBasis + shortRate))/1e4;
-            int shortFee = ((1 ether) *  int(assetBasis + longRate))/1e4;
-            longReturns[i] = ((assetReturn + longFee) * int(lrPastWeek[i]) * int(ethPastWeek[i]) ) / int(ethPrice * 1e6);
-            shortReturns[i] = (((-1 * assetReturn) + shortFee) * int(lrPastWeek[i]) * int(ethPastWeek[i]) ) / int(ethPrice * 1e6);
+            leverages[i] = lrPastWeek[i] * (ethPastWeek[i] * 1e6 ) / ethPrice; // add 6 more decimals
+            longReturns[i] = int(assetPrice * (1 ether)/ assetPastWeek[i]) - (1 ether) - (int(assetBasis) * 1 ether / 1e4);
+            
         }
         longProfit = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));
     }
@@ -291,32 +288,14 @@ contract SwapMarket {
         if (books[lp] == 0x0)
             return; 
         Book b = Book(books[lp]);
-        int16 longRate;
-        int16 shortRate;
-        lpRates storage mRates = rates[lp];
-
-        // Give lps default rates if they haven't changed theirs
-        if (mRates.currentLong == 0 && mRates.currentShort == 0)
-        {
-            longRate = defaultRates.currentLong;
-            shortRate = defaultRates.currentShort;
-        }
-        else
-        {
-            longRate = mRates.currentLong;
-            shortRate = mRates.currentShort;
-        }
 
         int[8] memory longReturns;
-        int[8] memory shortReturns;
+        uint[8] memory leverages;
         bool longProfited;
 
-        (longReturns, shortReturns, longProfited) = computeReturns(longRate, shortRate);
+        (leverages, longReturns, longProfited) = computeReturns();
         
-        b.settle(longReturns, shortReturns, longProfited);
-        
-        mRates.currentLong = mRates.nextLong;
-        mRates.currentShort = mRates.nextShort;
+        b.settle(leverages, longReturns, longProfited);
         
         if (lpChanges[lp] != 0x0)
             lpModify(lp, lpChanges[lp]);
@@ -333,12 +312,9 @@ contract SwapMarket {
         require(0 < longRate + shortRate); 
         require(longRate < 100 &&  shortRate < 100); 
         require(longRate > -100 && shortRate > -100);
-        bool finalDay;
-        (, finalDay, , , , ,) = oracle.assets(ASSET_ID);
-        require(!finalDay); // Rates locked in by day before
         lpRates storage mRates = rates[msg.sender];
-        mRates.nextLong = longRate;
-        mRates.nextShort = shortRate;
+        mRates.currentLong = longRate;
+        mRates.currentShort = shortRate;
     }
 
     function playerBurn(address lp, bytes32 id)
@@ -356,7 +332,7 @@ contract SwapMarket {
     {
         Book b = Book(books[lp]);
         uint lastSettleTime;
-        (, , , lastSettleTime, , ,) = oracle.assets(ASSET_ID);
+        (, , lastSettleTime, , ,) = oracle.assets(ASSET_ID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, OPEN_FEE, CANCEL_FEE);
     }
     

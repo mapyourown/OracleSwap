@@ -77,7 +77,6 @@ class TakerPNLForm extends Component {
     /*this.keys.basisKey = this.contracts.SPX_Oracle.methods.basis.cacheCall()*/
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
     this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
-    this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.state.makerAddress)
     this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.state.makerAddress)
   }
 
@@ -115,14 +114,6 @@ class TakerPNLForm extends Component {
 
     var assetHistory = this.priceHistory[this.assetID];
     var ethHistory = this.priceHistory[0];
-
-    var defaultRates;
-    if (this.defaultRatesKey in this.props.contracts.SwapMarket.defaultRates)
-      defaultRates = this.props.contracts.SwapMarket.defaultRates[this.defaultRatesKey].value
-
-    var rates
-    if (this.keys.ratesKey in this.props.contracts.SwapMarket.rates)
-      rates = this.props.contracts.SwapMarket.rates[this.keys.ratesKey].value
 
     var assetPrice;
     if(!this.state.finalAssetPrice)
@@ -162,7 +153,7 @@ class TakerPNLForm extends Component {
 
     return (
       <div>
-        <ShowTakerPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} lpRates={rates} subcontract={subcontract}  
+        <ShowTakerPNL assetData={assetData} ethData={ethData} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           settleTime={lastSettleTime}

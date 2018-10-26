@@ -57,6 +57,7 @@ contract Book {
 		address Taker; 		// defaults to 0x0
 		uint256 TakerMargin;	// margin is in ETH
 		uint256 ReqMargin;
+        int16 MarginRate;
         uint8 InitialDay;
 		bool Side;
 		bool isInitialized;
@@ -178,13 +179,13 @@ contract Book {
     function getSubcontract(bytes32 id)
         public
         view
-        returns (address taker, uint takerMargin, uint reqMargin,
-         uint8 initialDay, bool side, bool isCancelled, bool isBurned)
+        returns (uint takerMargin, uint reqMargin, int16 marginRate, uint8 initialDay,
+          bool side, bool isCancelled, bool isBurned)
     {
         LinkedListNode storage node = nodes[id];
-        taker = node.k.Taker;
         takerMargin = node.k.TakerMargin;
         reqMargin = node.k.ReqMargin;
+        marginRate = node.k.MarginRate;
         initialDay = node.k.InitialDay;
         side = node.k.Side;
         isCancelled = node.k.isCancelled;
@@ -207,7 +208,7 @@ contract Book {
             return totalShortMargin - totalLongMargin;
     }
 	
-	function take(address taker, uint amount, bool takerSide)
+	function take(address taker, uint amount, bool takerSide, int16 rate)
         public
         payable
         onlyAdmin
@@ -220,6 +221,7 @@ contract Book {
 
         Subcontract memory order;
         order.ReqMargin = RM;
+        order.MarginRate = rate;
         order.Side = !takerSide;
         order.isInitialized = true;
         order.TakerMargin = RM;
@@ -372,17 +374,26 @@ contract Book {
         balanceSend(amount, sender);
     }
 
-    /*function withdrawBalance()
-        public
+    function pnlCalculation(uint[8] leverages, int[8] longReturns, uint reqMargin, int16 marginRate, uint8 day, bool makerSide)
+        internal
+        pure
+        returns(int makerPNL)
     {
-        uint amount = balances[msg.sender];
-        balances[msg.sender] = 0;
-        msg.sender.transfer(amount);
-    }*/
-    
+        int intMargin = int(reqMargin);
+
+        if (makerSide)
+            makerPNL = (intMargin/1e12 * int(leverages[day]) * (longReturns[day] + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
+        else
+            makerPNL = (intMargin/1e12 * int(leverages[day]) * ((-1 * longReturns[day]) + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
+
+        if (makerPNL > intMargin)
+            makerPNL = intMargin;
+        if (makerPNL < -1 * intMargin)
+            makerPNL = -1 * intMargin;
+    }
 
     // TOOD: pending
-    function settle(int[8] longReturns, int[8] shortReturns, bool longProfited)
+    function settle(uint[8] leverages, int[8] longReturns, bool longProfited)
         public
         onlyAdmin
     {
@@ -404,18 +415,9 @@ contract Book {
             else
                 iter = node.prev;
              
-            int makerPNL;
-            int intMargin = int(node.k.ReqMargin);
-            if (node.k.Side)
-                makerPNL = (longReturns[node.k.InitialDay] * intMargin)/1e18;
-            else
-                makerPNL = (shortReturns[node.k.InitialDay] * intMargin)/1e18;
-
-            if (makerPNL > intMargin)
-                makerPNL = intMargin;
-            if (makerPNL < -1 * intMargin)
-                makerPNL = -1 * intMargin;
-            
+            int makerPNL = pnlCalculation(leverages, longReturns, node.k.ReqMargin,
+                node.k.MarginRate, node.k.InitialDay, node.k.Side);
+                
             uint toTake;
 
             uint absolutePNL;

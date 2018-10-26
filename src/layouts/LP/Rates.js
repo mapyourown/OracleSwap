@@ -30,8 +30,6 @@ class Rates extends Component {
         <div>
           <p>Current Long: {rateList['currentLong']/100}% per week{pendingSpinner}</p>
           <p>Current Short: {rateList['currentShort']/100}% per week{pendingSpinner}</p>
-          <p>Next Long: {rateList['nextLong']/100}% per week{pendingSpinner}</p>
-          <p>Next Short: {rateList['nextShort']/100}% per week{pendingSpinner}</p>
         </div>
       )
     }

@@ -24,7 +24,6 @@ class LPPNLForm extends Component {
     this.assetPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(this.assetID)
     this.ethPastKey = this.contracts.MultiOracle.methods.getPastPrices.cacheCall(0)
     this.bookKey = this.contracts.SwapMarket.methods.books.cacheCall(this.props.accounts[0])
-    this.defaultRatesKey = this.contracts.SwapMarket.methods.defaultRates.cacheCall()
     this.getOracleLogs = this.getOracleLogs.bind(this)
     this.priceHistory = {}
     this.getOracleLogs(this.assetID);
@@ -80,7 +79,6 @@ class LPPNLForm extends Component {
     this.drizzle.addContract(config)
     this.keys = {};
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
-    this.keys.ratesKey = this.drizzle.contracts.SwapMarket.methods.rates.cacheCall(this.props.accounts[0])
     this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.props.accounts[0])
     this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
   }
@@ -120,14 +118,6 @@ class LPPNLForm extends Component {
     var assetHistory = this.priceHistory[this.assetID];
     var ethHistory = this.priceHistory[0];
 
-    var rates;
-    if (this.keys.ratesKey in this.props.contracts.SwapMarket.rates)
-      rates = this.props.contracts.SwapMarket.rates[this.keys.ratesKey].value
-
-    var defaultRates;
-    if (this.defaultRatesKey in this.props.contracts.SwapMarket.defaultRates)
-      defaultRates = this.props.contracts.SwapMarket.defaultRates[this.defaultRatesKey].value
-
     var assetPrice;
     if(!this.state.finalAssetPrice)
     {
@@ -166,7 +156,7 @@ class LPPNLForm extends Component {
 
     return (
       <div>
-        <ShowLPPNL assetData={assetData} ethData={ethData} defaultRates={defaultRates} lpRates={rates} subcontract={subcontract}  
+        <ShowLPPNL assetData={assetData} ethData={ethData} subcontract={subcontract}  
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}

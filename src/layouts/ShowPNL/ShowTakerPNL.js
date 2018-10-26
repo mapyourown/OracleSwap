@@ -22,18 +22,10 @@ class ShowPNL extends Component {
       )
     }
     
-    if(!this.props.subcontract || !this.props.lpRates || !this.props.assetWeek || !this.props.ethWeek) {
+    if(!this.props.subcontract || !this.props.assetWeek || !this.props.ethWeek) {
       return (
         <span> Waiting for Data </span>
       )
-    }
-
-    // Show a loading spinner for future updates.
-    var pendingSpinner = this.props.contracts.SwapMarket.rates.synced ? '' : ' 🔄'
-
-    // Optionally hide loading spinner (EX: ERC20 token symbol).
-    if (this.props.hideIndicator) {
-      pendingSpinner = ''
     }
 
     var subcontract = this.props.subcontract
@@ -55,12 +47,7 @@ class ShowPNL extends Component {
     var ethPrice = this.props.ethPrice
     var ethStart = this.props.ethWeek.pastPrices[subcontract.initialDay]
     var leverageRatio = this.props.assetWeek.pastLRatios[subcontract.initialDay]
-
-    var rates
-    if (this.props.lpRates.currentLong == 0 && this.props.lpRates.currentShort == 0)
-      rates = this.props.defaultRates
-    else
-      rates = this.props.lpRates
+    var marginRate = subcontract.marginRate
 
     var sideString;
     var status = 'Ongoing'
@@ -68,12 +55,10 @@ class ShowPNL extends Component {
     if (!subcontract.side)
     {
       sideString = "Long"
-      showRate = rates.currentShort
     }
     else
     {
       sideString = "Short"
-      showRate = rates.currentLong
     }
 
     if (subcontract.isCancelled)
@@ -83,26 +68,13 @@ class ShowPNL extends Component {
 
     var rmAmount = subcontract.reqMargin/1e18;
     var takerMarginAmount = subcontract.takerMargin/1e18;
-
-/*    var assetReturn;
-    var ethReturn;
-    if (assetStart && ethStart)
-    {
-      assetReturn = assetPrice*1.0/assetStart - 1
-      ethReturn = ethPrice/ethStart
-    }
-    else {
-      assetReturn = assetPrice*1.0/assetWeekPrices[subcontract.initialDay] - 1
-      ethReturn = ethPrice/ethWeekPrices[subcontract.initialDay]
-    } */
     
     //var ETHRawPNL = (rmAmount * leverageRatio * assetReturn) / ethReturn
     var pnl = calculatePNL(ethStart,
       ethPrice,
       assetStart,
       assetPrice,
-      rates.currentLong,
-      rates.currentShort,
+      marginRate,
       rmAmount,
       leverageRatio,
       basis,
@@ -136,7 +108,7 @@ class ShowPNL extends Component {
         <p>First Day ETH Price: {ethStart / 1e6}</p>
         <p>Final ETH Price: {ethPrice / 1e6} </p>
         <p>Leverage Ratio: {leverageRatio/1e6}</p>
-        <p>Margin Rate: {showRate / 1e4}</p>
+        <p>Margin Rate: {marginRate / 1e4}</p>
         <p>Basis: {basis / 1e4} </p>
         <p>Taker PNL: {-1.0 * pnl} ETH</p>
         <p>New Taker Margin: {takerMarginAmount - pnl} ETH</p>

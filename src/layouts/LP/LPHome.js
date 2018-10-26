@@ -70,7 +70,7 @@ class LPHome extends Component {
             <p>Cancel </p>
             <ContractForm contract="SwapMarket" method="playerCancel" sendArgs={{value: 1000000000000000000}} />
             <br/>
-            <p> Add Margin </p>
+            <h3> Add Margin </h3>
             <p>Add margin to Book:</p>
             <label>Amount (in ETH): 
                 <input name="lpFundAmount" type="number" value={this.state.lpFundAmount} onChange={this.handleInputChange} />

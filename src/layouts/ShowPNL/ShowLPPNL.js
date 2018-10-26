@@ -22,18 +22,10 @@ class ShowPNL extends Component {
       )
     }
     
-    if(!this.props.subcontract || !this.props.lpRates || !this.props.assetWeek || !this.props.ethWeek) {
+    if(!this.props.subcontract || !this.props.assetWeek || !this.props.ethWeek) {
       return (
         <span> Waiting for Data </span>
       )
-    }
-
-    // Show a loading spinner for future updates.
-    var pendingSpinner = this.props.contracts.SwapMarket.rates.synced ? '' : ' 🔄'
-
-    // Optionally hide loading spinner (EX: ERC20 token symbol).
-    if (this.props.hideIndicator) {
-      pendingSpinner = ''
     }
 
     var subcontract = this.props.subcontract
@@ -56,24 +48,17 @@ class ShowPNL extends Component {
     var ethStart = this.props.ethWeek.pastPrices[subcontract.initialDay]
     var leverageRatio = this.props.assetWeek.pastLRatios[subcontract.initialDay]
 
-    var rates
-    if (this.props.lpRates.currentLong == 0 && this.props.lpRates.currentShort == 0)
-      rates = this.props.defaultRates
-    else
-      rates = this.props.lpRates
+    var marginRate = subcontract.marginRate;
 
     var sideString;
     var status = 'Ongoing'
-    var showRate;
     if (subcontract.side)
     {
       sideString = "Long"
-      showRate = rates.currentLong
     }
     else
     {
       sideString = "Short"
-      showRate = rates.currentShort
     }
 
     if (subcontract.isCancelled)
@@ -101,8 +86,7 @@ class ShowPNL extends Component {
       ethPrice,
       assetStart,
       assetPrice,
-      rates.currentLong,
-      rates.currentShort,
+      marginRate,
       rmAmount,
       leverageRatio,
       basis,
@@ -124,8 +108,8 @@ class ShowPNL extends Component {
         <p>Final Asset Price: {assetPrice / 1e6} </p>
         <p>First Day ETH Price: {ethStart / 1e6}</p>
         <p>Final ETH Price: {ethPrice / 1e6} </p>
-        <p>Leverage Ratio: {leverageRatio}</p>
-        <p>Margin Rate: {showRate/1e4} </p>
+        <p>Leverage Ratio: {leverageRatio/ 1e6}</p>
+        <p>Margin Rate: {marginRate/1e4} </p>
         <p>Basis: {basis/1e4}</p>
         <p>LP PNL: {pnl} ETH</p>
         <p>Taker PNL: {-1.0 * pnl} ETH</p>

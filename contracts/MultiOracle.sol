@@ -4,7 +4,6 @@ contract MultiOracle {
     
     struct Asset {
         bytes32 name;
-        bool isFinalDay;
         uint lastPriceUpdateTime;
         uint lastSettlePriceTime;
         uint8 currentDay;
@@ -55,7 +54,6 @@ contract MultiOracle {
         // Fill the asset struct
         Asset memory asset;
         asset.name = name;
-        asset.isFinalDay = false;
         asset.currentDay = 0;
         asset.lastPriceUpdateTime = block.timestamp;
         asset.lastSettlePriceTime = block.timestamp;
@@ -81,13 +79,12 @@ contract MultiOracle {
         return assets.length - 1;
     }
     
-    function setIntraweekPrice(uint assetID, uint price, uint ratio, bool lastDay)
+    function setIntraweekPrice(uint assetID, uint price, uint ratio)
         public
         onlyAdmin
     {
         Asset storage asset = assets[assetID];
         asset.currentDay = asset.currentDay + 1;
-        asset.isFinalDay = lastDay;
         prices[assetID][asset.currentDay] = price;
         leverageRatios[assetID][asset.currentDay] = ratio;
 
@@ -117,7 +114,6 @@ contract MultiOracle {
 
         asset.lastPriceUpdateTime = block.timestamp;
         asset.lastSettlePriceTime = block.timestamp;
-        asset.isFinalDay = false;
         asset.currentBasis = asset.nextBasis;
 
         emit PriceUpdated(assetID, asset.name, price, leverageRatio, block.timestamp);
@@ -141,7 +137,6 @@ contract MultiOracle {
         onlyAdmin
     {
         Asset storage asset = assets[assetID];
-        require(!asset.isFinalDay);
         asset.nextBasis = newBasis;
         emit BasisUpdated(assetID, asset.name, newBasis);
     }

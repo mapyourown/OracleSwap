@@ -3,8 +3,7 @@ export function calculatePNL( ethStart,
 		ethFinal,
 		assetStart,
 		assetFinal,
-		longRate,
-		shortRate,
+		marginRate,
 		requiredMargin,
 		leverageRatio,
 		basis,
@@ -16,16 +15,14 @@ export function calculatePNL( ethStart,
 	var CFDReturn = assetRatio - 1 - basis/1e4
 
 	var lpPNL
-	/*console.log(assetRatio)
+	console.log(assetRatio)
 	console.log(leveragedEth)
 	console.log(ethRatio)
-	console.log(CFDReturn)*/
-	if (side)
-		lpPNL = leveragedEth * (CFDReturn + shortRate/1e4) / ethRatio
+	console.log(CFDReturn)
+	if (side) // maker is long taker gets Short Rate
+		lpPNL = leveragedEth * (CFDReturn + marginRate/1e4) / ethRatio
 	else
-		lpPNL = leveragedEth * ((-1.0 * CFDReturn) + longRate/1e4) / ethRatio
-
-
+		lpPNL = leveragedEth * ((-1.0 * CFDReturn) + marginRate/1e4) / ethRatio
 
 	if (lpPNL > requiredMargin)
       lpPNL = requiredMargin
