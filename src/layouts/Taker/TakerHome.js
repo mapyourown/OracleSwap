@@ -174,7 +174,19 @@ function DisplaySubcontracts(props) {
     if (props.subcontracts[id].isBurned)
       status = "Burned"
 
-    return(
+    if (takerMarginAmount == 0)
+    {
+      return(
+        <li key={id.toString()}>
+          <p>Subcontract ID: {id}</p>
+          <p>LP: {props.subcontracts[id].lp}</p>
+          <p><strong>Subcontract Terminated</strong></p>
+        </li>
+      );
+    }
+    else
+    {
+      return(
         <li key={id.toString()}>
           <p>Subcontract ID: {id}</p>
           <p>LP: {props.subcontracts[id].lp}</p>
@@ -186,6 +198,7 @@ function DisplaySubcontracts(props) {
           <p>Status: {status}</p>
         </li>
       );
+    }
   });
   return (
     <ul>{listitems}</ul>

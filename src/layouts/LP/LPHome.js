@@ -8,13 +8,11 @@ import MarginsContainer from './MarginsContainer'
 import RatesContainer from './RatesContainer'
 import LPPNLForm from '../ShowPNL/LPPNLForm'
 import WithdrawForm from '../Withdraw/WithdrawForm'
+import BookPNL from './BookPNL'
 
 class LPHome extends Component {
   constructor(props, context) {
     super(props);
-    console.log('props', props);
-    console.log('context', context);
-    console.log(this.props.accounts[0])
 
     this.contracts = context.drizzle.contracts
     this.drizzle = context.drizzle
@@ -61,6 +59,10 @@ class LPHome extends Component {
             <MarginsContainer account={this.props.accounts[0]}/>
             <br/>
             <RatesContainer account={this.props.accounts[0]} />
+          </div>
+
+          <div className="pure-u-1-1">
+            <BookPNL/>
           </div>
 
           <div className="pure-u-1-1">

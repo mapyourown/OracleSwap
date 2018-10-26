@@ -100,7 +100,6 @@ class ShowPNL extends Component {
         <p><strong>{isSettlePeriod ? "This is the settle period" : "This is not the settle period"}</strong></p>
         <p>Subcontract ID: {this.props.id}</p>
         <p>Required Margin: {rmAmount}</p>
-        <p>Taker: {subcontract.taker}</p>
         <p>Taker Margin: {takerMarginAmount}</p>
         <p>LP Side: {sideString}</p>
         <p>First Day ID: {subcontract.initialDay}</p>

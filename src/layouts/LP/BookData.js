@@ -62,13 +62,7 @@ class BookData extends Component {
     }
   }
 
-
-
   render() {
-
-    //console.log('heartbeat')
-    //console.log('state', this.drizzle.store.getState())
-    //console.log('props', this.props.SwapMarket)
 
     var bookSubcontracts = {}
     var state = this.drizzle.store.getState()
@@ -136,7 +130,16 @@ function DisplaySubcontracts(props) {
     if (props.subcontracts[id].isBurned)
       status = "Burned"
 
-    return(
+    if (takerMarginAmount == 0) {
+      return(
+        <li key={id.toString()}>
+          <p>Subcontract ID: {id}</p>
+          <p><strong>Subcontract Terminated</strong></p>
+        </li>
+      );
+    }
+    else{
+      return(
         <li key={id.toString()}>
           <p>Subcontract ID: {id}</p>
           <p>Required Margin: {rmAmount}</p>
@@ -148,6 +151,7 @@ function DisplaySubcontracts(props) {
           <p>Status: {status}</p>
         </li>
       );
+    }
   });
   return (
     <ul>{listitems}</ul>
