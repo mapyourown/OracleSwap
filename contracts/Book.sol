@@ -374,7 +374,7 @@ contract Book {
         balanceSend(amount, sender);
     }
 
-    function pnlCalculation(uint[8] leverages, int[8] longReturns, uint reqMargin, int16 marginRate, uint8 day, bool makerSide)
+    function pnlCalculation(uint leverage, int longReturn, uint reqMargin, int16 marginRate, bool makerSide)
         internal
         pure
         returns(int makerPNL)
@@ -382,9 +382,9 @@ contract Book {
         int intMargin = int(reqMargin);
 
         if (makerSide)
-            makerPNL = (intMargin/1e12 * int(leverages[day]) * (longReturns[day] + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
+            makerPNL = (intMargin/1e12 * int(leverage) * (longReturn + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
         else
-            makerPNL = (intMargin/1e12 * int(leverages[day]) * ((-1 * longReturns[day]) + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
+            makerPNL = (intMargin/1e12 * int(leverage) * ((-1 * longReturn) + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
 
         if (makerPNL > intMargin)
             makerPNL = intMargin;
@@ -415,8 +415,8 @@ contract Book {
             else
                 iter = node.prev;
              
-            int makerPNL = pnlCalculation(leverages, longReturns, node.k.ReqMargin,
-                node.k.MarginRate, node.k.InitialDay, node.k.Side);
+            int makerPNL = pnlCalculation(leverages[node.k.InitialDay], longReturns[node.k.InitialDay], node.k.ReqMargin,
+                node.k.MarginRate, node.k.Side);
                 
             uint toTake;
 
