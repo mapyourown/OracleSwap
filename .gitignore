@@ -4,3 +4,6 @@ build/
 
 # ignore npm cache
 /node_modules/.cache/
+
+# ignore saved blockchain
+data/
