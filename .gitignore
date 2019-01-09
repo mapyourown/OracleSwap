@@ -7,3 +7,6 @@ build/
 
 # ignore saved blockchain
 data/
+
+# ignore secret file
+secret-mneumonic.js
