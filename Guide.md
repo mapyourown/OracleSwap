@@ -6,6 +6,7 @@ The code powering the SmartSwap Dapp is split over multiple solidity contracts, 
 * Oracle - The agent who posts price data to the Oracle Contracts
 * Admin - The admin is a user with the responsibility of updating the contract values as well as settling each maker at the scheduled time each week.
 * Subcontract - the individual swap contract between a LP and a Taker. Known as a Subcontract to distinguish it from solidity contracts.
+* Settlement - Every week at the specified time, all subcontracts are evaluated, value changes hands between LP and taker, and the subcontract is renewed if the proper conditions are met.
 * Book - All trades that a given liquidity provider is involved in, located in a single smart contract.
 * Required Margin (RM)- The value a player must post to the contract in order to continue their trades into the future. This determines the size of the subcontract.
 * Default - When a user has not met their margin requirements, they are said to have defaulted, and their trade(s) are cancelled.
