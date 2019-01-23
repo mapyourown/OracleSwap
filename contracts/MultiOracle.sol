@@ -26,11 +26,26 @@ contract MultiOracle {
         _;
     }
     
-    event PriceUpdated(uint indexed _id, bytes32 indexed _name, uint _price, uint _ratio, uint _timestamp);
-    event LeverageRatioUpdated(uint indexed _id, uint _ratio);
-    event BasisUpdated(uint indexed _id, bytes32 indexed _name, int16 _basis);
-    event AssetAdded(uint indexed _id, bytes32 _name, uint _price, int16 _basis, uint _vol, bool _cryptoSettled);
-    event PriceCorrected(uint indexed _id, bytes32 indexed _name, uint _price, uint _leverageRatio);
+    event AssetAdded(
+        uint indexed id,
+        bytes32 name,
+        uint price,
+        int16 basis,
+        uint vol,
+        bool cryptoSettled
+    );
+
+    event PriceUpdated(
+        uint indexed id,
+        bytes32 name,
+        uint price,
+        uint ratio,
+        uint timestamp
+    );
+
+    event LeverageRatioUpdated(uint indexed id, uint ratio);
+    event BasisUpdated(uint indexed id, bytes32 indexed name, int16 basis);
+    event PriceCorrected(uint indexed id, bytes32 indexed name, uint price, uint leverageRatio);
     
     constructor (uint ethPrice, int16 ethBasis, uint ethLR) public {
         admin = msg.sender;
@@ -40,8 +55,8 @@ contract MultiOracle {
 
     function addReader(address newReader)
         public
+        onlyAdmin
     {
-        require (msg.sender == admin);
         readers[newReader] = true;
     }
     
@@ -83,8 +98,12 @@ contract MultiOracle {
         public
         onlyAdmin
     {
-        Asset storage asset = assets[assetID];
+        Asset storage asset = assets[assetID];        
+        // Prevent price update too early
+        require(block.timestamp > asset.lastPriceUpdateTime + 18 hours);
+        
         asset.currentDay = asset.currentDay + 1;
+        asset.lastPriceUpdateTime = block.timestamp;
         prices[assetID][asset.currentDay] = price;
         leverageRatios[assetID][asset.currentDay] = ratio;
 
@@ -95,10 +114,12 @@ contract MultiOracle {
         public
         onlyAdmin
     {
-        // TODO: add time definitions for final release
+        Asset storage asset = assets[assetID];
+        // Timing restrictions to prevent oracle cheating
+        require(block.timestamp > asset.lastPriceUpdateTime + 18 hours);
+        require(block.timestamp > asset.lastSettlePriceTime + 4 days);
 
         // push current prices into previous week
-        Asset storage asset = assets[assetID];
         lastWeekPrices[assetID] = prices[assetID];
         lastLeverageRatios[assetID] = leverageRatios[assetID];
 
@@ -125,7 +146,6 @@ contract MultiOracle {
     {
         Asset storage asset = assets[assetID];
         require(block.timestamp < asset.lastPriceUpdateTime + 15 minutes);
-        //asset.prices[asset.currentDay] = newPrice;
         prices[assetID][asset.currentDay] = newPrice;
         leverageRatios[assetID][asset.currentDay] = newRatio;
         emit PriceUpdated(assetID, asset.name, newPrice, newRatio, block.timestamp);
@@ -139,6 +159,13 @@ contract MultiOracle {
         Asset storage asset = assets[assetID];
         asset.nextBasis = newBasis;
         emit BasisUpdated(assetID, asset.name, newBasis);
+    }
+
+    function changeAdmin(address newAdmin) 
+        public 
+        onlyAdmin
+    {
+        admin = newAdmin;
     }
 
     function getCurrentPrices(uint id)
@@ -168,10 +195,5 @@ contract MultiOracle {
     {
         pastPrices = lastWeekPrices[id];
         pastLRatios = lastLeverageRatios[id];
-    }
-
-    function changeAdmin(address newAdmin) public {
-        require (msg.sender == admin);
-        admin = newAdmin;
     }
 }
