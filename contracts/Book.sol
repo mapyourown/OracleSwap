@@ -29,20 +29,27 @@ contract Book {
     uint public lastSettleTime;
     
     uint public lpMargin;
+    uint public burnFees;
 
     uint public totalLongMargin;
     uint public totalShortMargin;
     uint public totalNewMargin;
-    
-    //mapping(address => uint) public balances;
+
+    uint public takeMinimum;
 
     uint public numContracts;
-    uint public burnFees;
+    
     uint public numEntries;
     bytes32 public head;
     bytes32 public tail;
-    mapping(bytes32 => LinkedListNode) public nodes;
+    mapping(bytes32 => Subcontract) public subcontracts;
     bytes32[] public pendingContracts;
+    bytes32[] public longContracts;
+    bytes32[] public shortContracts;
+    mapping(bytes32 => uint) public indexes;
+
+    uint public burnMargin;
+
     
     modifier onlyAdmin()
     {
@@ -68,113 +75,54 @@ contract Book {
 		bool makerBurned;
 	}
 	
-	struct LinkedListNode {
-	    bytes32 prev;
-	    bytes32 next;
-	    Subcontract k;
-	}
-	
-	function LLSortAdd (bytes32 id) 
+	function addSubcontract(bytes32 id, bool takerSide) 
 	    internal
 	{
-	    LinkedListNode storage ll = nodes[id];
-		Subcontract storage order = ll.k;
-		
-		// case 1: the maker has no other orders
-        if (numEntries == 0) {
-            // Store the new LL as the makers book
-    	    head = id;
-    	    tail = id;
-        }
-        else // case 2: Need to insert the order in sorted order
+
+        if (takerSide)
         {
-            bytes32 iter = head;
-            
-            // we want to insert as soon as we find a "smaller" RM
-            // keep in mind that if the side of the order is short, it is smaller than a long
-            bool inserted = false;
-            int newValue = int(order.ReqMargin);
-            if (!order.Side) 
-                newValue = newValue * -1;
-                
-            int iterValue = int(nodes[iter].k.ReqMargin);
-            if (!nodes[iter].k.Side)
-                iterValue = iterValue * -1;
-            
-            while (newValue < iterValue) {
-                if (nodes[iter].next == 0x0) // we've reached the end of the list
-                {
-                    // insert as the last element
-                    nodes[iter].next = id;
-                    tail = id;
-                    ll.prev = iter;
-                    inserted = true;
-                }
-                // otherwise, proceed throught the list
-                iter = nodes[iter].next;
-                iterValue = int(nodes[iter].k.ReqMargin);
-                if (!nodes[iter].k.Side)
-                    iterValue = iterValue * -1;
-            }
-            
-            // after we've reached a stopping point, insert
-            if (!inserted) {
-                ll.prev = nodes[iter].prev;
-                if (nodes[iter].prev != 0x0) 
-                    nodes[nodes[iter].prev].next = id;
-                else
-                    head = id;
-                nodes[iter].prev = id;
-                ll.next = iter;
-            }
+            indexes[id] = longContracts.length;
+            longContracts.push(id);
         }
-        
-        // save the changes
-        nodes[id] = ll;
-        numEntries = numEntries + 1;
+        else
+        {
+            indexes[id] = shortContracts.length;
+            shortContracts.push(id);
+        }
 	}
 	
-	function LLDelete (bytes32 id) 
+	function deleteSubcontract (bytes32 id) 
 	    internal
     {
-	    LinkedListNode storage ll = nodes[id];
+
+	    Subcontract storage k = subcontracts[id];
 		
-		// fix the liked list, then clear out the memory
-		if (id == head)
-		    head = ll.next;
-	    if (id == tail)
-	        tail = ll.prev;
-	    if (ll.prev != 0x0) 
-	        nodes[ll.prev].next = ll.next;
-        if (ll.next != 0x0)
-            nodes[ll.next].prev = ll.prev;
-        uint tMargin = ll.k.TakerMargin;
-        ll.k.TakerMargin = 0;
-        if (!ll.k.newSubcontract)
+        uint tMargin = k.TakerMargin;
+        k.TakerMargin = 0;
+        uint rMargin = k.ReqMargin;
+        if (!k.newSubcontract)
         {
-            if (ll.k.Side)
-            totalLongMargin = totalLongMargin.sub(tMargin);
-        else
-            totalShortMargin = totalShortMargin.sub(tMargin);
+            if (k.Side)
+                totalLongMargin = totalLongMargin.sub(rMargin);
+            else
+                totalShortMargin = totalShortMargin.sub(rMargin);
         }
         //balances[ll.k.Taker] = balances[ll.k.Taker].add(tMargin);
-        balanceSend(tMargin, ll.k.Taker);
-            
-        LinkedListNode memory blank;
-        nodes[id] = blank;
-        
-        numEntries = numEntries - 1;
-	}
+        balanceSend(tMargin, k.Taker);
 
-    function getNode(bytes32 id)
-        public
-        view
-        returns (bytes32 prev, bytes32 next)
-    {
-        LinkedListNode storage node = nodes[id];
-        prev = node.prev;
-        next = node.next;
-    }
+        // implicitly delete by swapping with last element and shortening
+        uint index = indexes[id];
+        if (k.Side) {
+            longContracts[index] = longContracts[longContracts.length - 1];
+            longContracts.length--;
+        } else {
+            shortContracts[index] = shortContracts[shortContracts.length - 1];
+            shortContracts.length--;
+        }
+            
+        Subcontract memory blank;
+        subcontracts[id] = blank;
+	}
 
     function getSubcontract(bytes32 id)
         public
@@ -182,20 +130,27 @@ contract Book {
         returns (uint takerMargin, uint reqMargin, int16 marginRate, uint8 initialDay,
           bool side, bool isCancelled, bool isBurned)
     {
-        LinkedListNode storage node = nodes[id];
-        takerMargin = node.k.TakerMargin;
-        reqMargin = node.k.ReqMargin;
-        marginRate = node.k.MarginRate;
-        initialDay = node.k.InitialDay;
-        side = node.k.Side;
-        isCancelled = node.k.isCancelled;
-        isBurned = node.k.isBurned;
+        Subcontract storage k = subcontracts[id];
+        takerMargin = k.TakerMargin;
+        reqMargin = k.ReqMargin;
+        marginRate = k.MarginRate;
+        initialDay = k.InitialDay;
+        side = k.Side;
+        isCancelled = k.isCancelled;
+        isBurned = k.isBurned;
     }
 	
-	constructor(address maker, address _admin) public {
+	constructor(address _lp, address _admin) public {
 		admin = _admin;
-		lp = maker;
+		lp = _lp;
 	}
+
+    function setTakeMinimum(uint min)
+        public
+        onlyAdmin
+    {
+        takeMinimum = min;
+    }
 
     function requiredMargin()
         public
@@ -203,9 +158,9 @@ contract Book {
         returns (uint RM)
     {
         if (totalLongMargin > totalShortMargin)
-            return totalLongMargin - totalShortMargin;
+            return totalLongMargin - totalShortMargin + totalNewMargin;
         else
-            return totalShortMargin - totalLongMargin;
+            return totalShortMargin - totalLongMargin + totalNewMargin;
     }
 	
 	function take(address taker, uint amount, bool takerSide, int16 rate)
@@ -214,6 +169,7 @@ contract Book {
         onlyAdmin
         returns (bytes32)
     {
+        require(amount > takeMinimum);
         uint RM = amount; 
         uint makerShare = msg.value.sub(RM);
         totalNewMargin = totalNewMargin.add(RM);
@@ -226,16 +182,16 @@ contract Book {
         order.isInitialized = true;
         order.TakerMargin = RM;
         order.newSubcontract = true;
+        order.isPending = true;
         order.Taker = taker;
-        
-        bytes32 id = keccak256(abi.encodePacked(numContracts, lp, block.timestamp));
+
+        //bytes32 id = keccak256(abi.encodePacked(numContracts, lp, block.timestamp));
+        bytes32 id = keccak256(abi.encodePacked(lp, block.timestamp, numContracts));
         numContracts += 1;
-        LinkedListNode memory node;
-        node.k = order;
-        nodes[id] = node;
+        subcontracts[id] = order;
         pendingContracts.push(id);
         emit OrderTaken(taker, id, RM);
-        LLSortAdd(id);
+        addSubcontract(id, takerSide);
         return id;
     }
 
@@ -250,9 +206,9 @@ contract Book {
         public
         payable
     {
-        LinkedListNode storage node = nodes[id];
-        require (node.k.isInitialized);
-        node.k.TakerMargin += msg.value;
+        Subcontract storage k = subcontracts[id];
+        require (k.isInitialized);
+        k.TakerMargin += msg.value;
     }
 
     function firstPrice(uint8 priceDay)
@@ -262,12 +218,12 @@ contract Book {
         // move directly to LL
         uint length = pendingContracts.length;
         for (uint32 i = 0; i < length; i++) {
-            LinkedListNode storage node = nodes[pendingContracts[i]];
+            Subcontract storage k = subcontracts[pendingContracts[i]];
             
             // simply record the price for updating
             // then move it to the rest of the list
-            node.k.InitialDay = priceDay;
-            node.k.isPending = false;
+            k.InitialDay = priceDay;
+            k.isPending = false;
         }
         delete pendingContracts;
     }
@@ -278,38 +234,34 @@ contract Book {
         // cancel pending contracts first
         uint length = pendingContracts.length;
         for (uint32 i = 0; i < length; i++) {
-            LinkedListNode storage ll_pend = nodes[pendingContracts[i]];
-            Subcontract storage k_pend = ll_pend.k;
-            uint toPayPend = Utils.maxSubtract(lpMargin, k_pend.ReqMargin.mul(cancelFeePercentage)/100);
+            Subcontract storage k = subcontracts[pendingContracts[i]];
+            uint toPayPend = Utils.maxSubtract(lpMargin, k.ReqMargin.mul(cancelFeePercentage)/100);
             lpMargin = lpMargin.sub(toPayPend);
-            uint tMargin = k_pend.TakerMargin;
-            k_pend.TakerMargin = 0;
+            uint tMargin = k.TakerMargin;
+            k.TakerMargin = 0;
             //balances[k_pend.Taker] = balances[k_pend.Taker].add(tMargin + toPayPend);
-            balanceSend(tMargin + toPayPend, k_pend.Taker);
-            LinkedListNode memory empty;
-            nodes[pendingContracts[i]] = empty;
+            balanceSend(tMargin + toPayPend, k.Taker);
         }
         delete pendingContracts;
         
         // cancel the rest
-        bytes32 iter = head;
-        while (iter != 0x0)
-        {
-            LinkedListNode storage ll = nodes[iter];
-            ll.k.isCancelled = true;
-            iter = ll.next;
-            
-            uint toPay = Utils.maxSubtract(lpMargin, ll.k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
+        for (i = 0; i < longContracts.length; i++) {
+            bytes32 id = longContracts[i];
+            k = subcontracts[id];
+            k.isCancelled = true;
+            uint toPay = Utils.maxSubtract(lpMargin, k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
             lpMargin = lpMargin.sub(toPay);
-            ll.k.TakerMargin = ll.k.TakerMargin.add(toPay);
+            k.TakerMargin = k.TakerMargin.add(toPay);
         }
-    }
-    
-    function changelp(address _newlp)
-        internal
-        onlyAdmin
-    {
-        lp = _newlp;
+
+        for (i = 0; i < shortContracts.length; i++) {
+            id = shortContracts[i];
+            k = subcontracts[id];
+            k.isCancelled = true;
+            toPay = Utils.maxSubtract(lpMargin, k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
+            lpMargin = lpMargin.sub(toPay);
+            k.TakerMargin = k.TakerMargin.add(toPay);
+        }
     }
     
     function cancel(uint priceTime, bytes32 id, address sender, uint8 openFee, uint8 cancelFee)
@@ -317,59 +269,56 @@ contract Book {
         payable
         onlyAdmin
     {
-        // TODO: allow Admin
-        // TODO: taker can not cancel during settlement period.
-        LinkedListNode storage node = nodes[id];
-		require(sender == node.k.Taker || sender == lp);
-        require(!node.k.isCancelled);
+        Subcontract storage k = subcontracts[id];
+		require(sender == k.Taker || sender == lp);
+        require(!k.isCancelled);
 		uint fee;
-		if (node.k.isPending) {
-			fee = (node.k.ReqMargin * openFee)/100;
+		if (k.isPending) {
+			fee = (k.ReqMargin * openFee)/100;
 		} else {
 			if (priceTime > lastSettleTime) // settlement period
             {
-                require(sender != node.k.Taker); // taker cannot cancel during settle
-				fee = (node.k.ReqMargin * cancelFee)/100;
+                require(sender != k.Taker); // taker cannot cancel during settle
             }
+            fee = (k.ReqMargin * cancelFee)/100;
 		}
 		require(msg.value >= fee);
-		if (sender == node.k.Taker)
+		if (sender == k.Taker)
 		    lpMargin = lpMargin.add(fee);
 	    else if (sender == lp)
-	        node.k.TakerMargin = node.k.TakerMargin.add(fee);
+	        k.TakerMargin = k.TakerMargin.add(fee);
         //balances[sender] += (msg.value - fee);
         balanceSend(msg.value - fee, sender);
-	    node.k.isCancelled = true;
+	    k.isCancelled = true;
     }
     
-    function burn( bytes32 id, address sender)
+    function burn( bytes32 id, address sender, uint amount)
         public
         payable
         onlyAdmin
+        returns (uint)
     {
-        LinkedListNode storage node = nodes[id];
-        require(sender == lp || sender == node.k.Taker);
-        require(!node.k.isBurned);
+        Subcontract storage k = subcontracts[id];
+        require(sender == lp || sender == k.Taker);
+        require(!k.isBurned);
         
         // cost to kill
-		uint burnFee = node.k.ReqMargin/3;
-		require (msg.value >= burnFee);
+		uint burnFee = k.ReqMargin/3;
+		require (amount >= burnFee);
 		if (msg.sender == lp)
-			node.k.makerBurned = true;
+			k.makerBurned = true;
 		// set appropriate flags for settlment
-        burnFees = burnFees.add(burnFee);
-        //balances[sender] += (msg.value - burnFee);
-        balanceSend(msg.value - burnFee, sender);
-		node.k.isBurned = true;
+		k.isBurned = true;
+        return burnFee;
     }
     
     function takerWithdrawal(bytes32 id, uint amount, address sender)
         public
         onlyAdmin
     {
-        LinkedListNode storage node = nodes[id];
-        require(node.k.TakerMargin >= node.k.ReqMargin.add(amount));
-        node.k.TakerMargin = node.k.TakerMargin.sub(amount);
+        Subcontract storage k = subcontracts[id];
+        require(k.TakerMargin >= k.ReqMargin.add(amount));
+        k.TakerMargin = k.TakerMargin.sub(amount);
         //balances[sender] = balances[sender].add(amount);
         balanceSend(amount, sender);
     }
@@ -392,31 +341,23 @@ contract Book {
             makerPNL = -1 * intMargin;
     }
 
-    // TOOD: pending
-    function settle(uint[8] leverages, int[8] longReturns, bool longProfited)
-        public
-        onlyAdmin
+    function settleSubcontract(bytes32 id, uint[8] leverages, int[8] longReturns)
+        internal
+        returns(bool)
     {
+        Subcontract storage k = subcontracts[id];
 
-        uint burnMargin = 0;
-        bytes32 iter;
-        
-        if (longProfited)
-            iter = head;
-        else
-            iter = tail;
-            
-        while (iter != 0x0) 
+        if (k.newSubcontract)
         {
-            LinkedListNode storage node = nodes[iter];
-            bytes32 id = iter;
-            if (longProfited)
-                iter = node.next;
+            if (k.Side)
+                totalLongMargin = totalLongMargin.add(k.ReqMargin);
             else
-                iter = node.prev;
-             
-            int makerPNL = pnlCalculation(leverages[node.k.InitialDay], longReturns[node.k.InitialDay], node.k.ReqMargin,
-                node.k.MarginRate, node.k.Side);
+                totalShortMargin = totalShortMargin.add(k.ReqMargin);
+            k.newSubcontract = false;
+        } else {
+         
+            int makerPNL = pnlCalculation(leverages[k.InitialDay], longReturns[k.InitialDay], k.ReqMargin,
+                k.MarginRate, k.Side);
                 
             uint toTake;
 
@@ -429,13 +370,13 @@ contract Book {
             // in the case the maker should profit
             if (makerPNL > 0)
             {
-                toTake = Utils.maxSubtract(node.k.TakerMargin, absolutePNL);
-                node.k.TakerMargin = node.k.TakerMargin.sub(toTake);
+                toTake = Utils.maxSubtract(k.TakerMargin, absolutePNL);
+                k.TakerMargin = k.TakerMargin.sub(toTake);
 
                 // add to burn margin if taker burned or burn fees if maker burned
-                if (!node.k.isBurned)
+                if (!k.isBurned)
                     lpMargin = lpMargin.add(toTake);
-                else if (node.k.makerBurned)
+                else if (k.makerBurned)
                     lpMargin = lpMargin.add(toTake);
                 else 
                     burnMargin = burnMargin.add(toTake);
@@ -448,43 +389,60 @@ contract Book {
                 uint lpMarginTake = Utils.maxSubtract(lpMargin, (absolutePNL - burnMarginTake));
                 lpMargin = lpMargin.sub(lpMarginTake);
                 burnMargin = burnMargin.sub(burnMarginTake);
-                if (!node.k.isBurned)
-                    node.k.TakerMargin = node.k.TakerMargin.add(lpMarginTake + burnMarginTake);
-                else if (!node.k.makerBurned)
-                    node.k.TakerMargin = node.k.TakerMargin.add(lpMarginTake + burnMarginTake);
+                if (!k.isBurned)
+                    k.TakerMargin = k.TakerMargin.add(lpMarginTake + burnMarginTake);
+                else if (!k.makerBurned)
+                    k.TakerMargin = k.TakerMargin.add(lpMarginTake + burnMarginTake);
                 else
                     burnFees = burnFees.add(lpMarginTake + burnMarginTake);
             }
-            
-            // close if killed or cancelled, will refund everyone
-            if (node.k.isBurned || node.k.isCancelled) {
-                LLDelete(id);
-                continue;
-            }
+        }
+        
+        // close if killed or cancelled, will refund everyone
+        if (k.isBurned || k.isCancelled) {
+            deleteSubcontract(id);
+            return;
+        }
+        
+        // setup for next week
+        if (k.TakerMargin < k.ReqMargin)
+        {
+            uint toSub = Utils.maxSubtract(k.TakerMargin, 100);
+            // TODO: fix
+                //k.ReqMargin.mul(burnFee)/100);
+            k.TakerMargin = k.TakerMargin.sub(toSub);
+            lpMargin = lpMargin.add(toSub);
+            emit TakerDefault(k.Taker, id);
+            deleteSubcontract(id);
+        }
+    }
 
-            if (node.k.newSubcontract)
-            {
-                if (node.k.Side)
-                    totalLongMargin = totalLongMargin.add(node.k.ReqMargin);
-                else
-                    totalShortMargin = totalShortMargin.add(node.k.ReqMargin);
-                node.k.newSubcontract = false;
-            }
-            
-            // setup for next week
-            if (node.k.TakerMargin < node.k.ReqMargin)
-            {
-                uint toSub = Utils.maxSubtract(node.k.TakerMargin, 100);
-                // TODO: fix
-                    //node.k.ReqMargin.mul(burnFee)/100);
-                node.k.TakerMargin = node.k.TakerMargin.sub(toSub);
-                lpMargin = lpMargin.add(toSub);
-                LLDelete(id);
-                emit TakerDefault(node.k.Taker, id);
+    function settle(uint[8] leverages, int[8] longReturns, bool longProfited)
+        public
+        onlyAdmin
+    {
+        if (longProfited)
+        {
+            for (uint i = 0; i < shortContracts.length; i++) {
+                settleSubcontract(shortContracts[i], leverages, longReturns);
+            }   
+            for (i = 0; i < longContracts.length; i++) {
+                settleSubcontract(longContracts[i], leverages, longReturns);
             }
         }
+        else
+        {  
+            for (i = 0; i < longContracts.length; i++) {
+                settleSubcontract(longContracts[i], leverages, longReturns);
+            }
+            for (i = 0; i < shortContracts.length; i++) {
+                settleSubcontract(shortContracts[i], leverages, longReturns);
+            }
+        }
+
         totalNewMargin = 0;
         lastSettleTime = block.timestamp;
+        burnMargin = 0;
     }
     
     function lpMarginWithdrawal(uint amount)
@@ -503,7 +461,7 @@ contract Book {
         require (block.timestamp > lastSettleTime + (20 days));
         require (lastSettleTime != 0); // set to 0 initially
 
-        LLDelete(id);
+        deleteSubcontract(id);
     }
 
     function balanceSend(uint amount, address reciever)
@@ -511,6 +469,13 @@ contract Book {
     {
         SwapMarket market = SwapMarket(admin);
         market.balanceTransfer.value(amount)(reciever);
+    }
+
+    function setMinimum(uint amount)
+        public
+        onlyAdmin
+    {
+        takeMinimum = amount;
     }
 
 }

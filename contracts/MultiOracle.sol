@@ -7,8 +7,6 @@ contract MultiOracle {
         uint lastPriceUpdateTime;
         uint lastSettlePriceTime;
         uint8 currentDay;
-        int16 currentBasis; // Basis is in hundredths of a percent, e.g. a value of 12 indicates .0012
-        int16 nextBasis; // Basis is in hundredths of a percent, e.g. a value of 12 indicates .0012
     }
     
     address public admin;
@@ -30,8 +28,7 @@ contract MultiOracle {
         uint indexed id,
         bytes32 name,
         uint price,
-        int16 basis,
-        uint vol,
+        uint leverageRatio,
         bool cryptoSettled
     );
 
@@ -39,18 +36,25 @@ contract MultiOracle {
         uint indexed id,
         bytes32 name,
         uint price,
-        uint ratio,
+        uint leverageRatio,
+        uint timestamp
+    );
+
+    event SettlePrice(
+        uint indexed id,
+        bytes32 name,
+        uint price,
+        uint leverageRatio,
         uint timestamp
     );
 
     event LeverageRatioUpdated(uint indexed id, uint ratio);
-    event BasisUpdated(uint indexed id, bytes32 indexed name, int16 basis);
     event PriceCorrected(uint indexed id, bytes32 indexed name, uint price, uint leverageRatio);
     
-    constructor (uint ethPrice, int16 ethBasis, uint ethLR) public {
+    constructor (uint ethPrice, uint ethLR) public {
         admin = msg.sender;
         // first asset is always ETH
-        addAsset("ETHUSD", ethPrice, ethBasis, ethLR, false);
+        addAsset("ETHUSD", ethPrice, ethLR, false); // TODO: maybe tru?
     }
 
     function addReader(address newReader)
@@ -60,7 +64,7 @@ contract MultiOracle {
         readers[newReader] = true;
     }
     
-    function addAsset(bytes32 name, uint startPrice, int16 basis, uint ratio, bool isCrypto)
+    function addAsset(bytes32 name, uint startPrice, uint leverageRatio, bool isCrypto)
         public
         returns (uint id)
     {
@@ -72,8 +76,6 @@ contract MultiOracle {
         asset.currentDay = 0;
         asset.lastPriceUpdateTime = block.timestamp;
         asset.lastSettlePriceTime = block.timestamp;
-        asset.currentBasis = basis;
-        asset.nextBasis = basis;
         isCryptoSettled.push(isCrypto);
         assets.push(asset);
 
@@ -84,17 +86,17 @@ contract MultiOracle {
         lastLeverageRatios.push(_ratios);
 
         _prices[0] = startPrice;
-        _ratios[0] = ratio;
+        _ratios[0] = leverageRatio;
 
         prices.push(_prices);
         leverageRatios.push(_ratios);
 
-        emit AssetAdded(assets.length - 1, name, startPrice, basis, ratio, isCrypto);
-        emit PriceUpdated(assets.length - 1, name, startPrice, ratio, block.timestamp);
+        emit AssetAdded(assets.length - 1, name, startPrice, leverageRatio, isCrypto);
+        emit PriceUpdated(assets.length - 1, name, startPrice, leverageRatio, block.timestamp);
         return assets.length - 1;
     }
     
-    function setIntraweekPrice(uint assetID, uint price, uint ratio)
+    function setIntraweekPrice(uint assetID, uint price, uint leverageRatio)
         public
         onlyAdmin
     {
@@ -105,9 +107,9 @@ contract MultiOracle {
         asset.currentDay = asset.currentDay + 1;
         asset.lastPriceUpdateTime = block.timestamp;
         prices[assetID][asset.currentDay] = price;
-        leverageRatios[assetID][asset.currentDay] = ratio;
+        leverageRatios[assetID][asset.currentDay] = leverageRatio;
 
-        emit PriceUpdated(assetID, asset.name, price, ratio, block.timestamp);
+        emit PriceUpdated(assetID, asset.name, price, leverageRatio, block.timestamp);
     }
     
     function setSettlePrice(uint assetID, uint price, uint leverageRatio)
@@ -135,9 +137,9 @@ contract MultiOracle {
 
         asset.lastPriceUpdateTime = block.timestamp;
         asset.lastSettlePriceTime = block.timestamp;
-        asset.currentBasis = asset.nextBasis;
 
         emit PriceUpdated(assetID, asset.name, price, leverageRatio, block.timestamp);
+        emit SettlePrice(assetID, asset.name, price, leverageRatio, block.timestamp);
     }
     
     function editPrice(uint assetID, uint newPrice, uint newRatio)
@@ -150,15 +152,6 @@ contract MultiOracle {
         leverageRatios[assetID][asset.currentDay] = newRatio;
         emit PriceUpdated(assetID, asset.name, newPrice, newRatio, block.timestamp);
         emit PriceCorrected(assetID, asset.name, newPrice, newRatio);
-    }
-    
-    function setBasis(uint assetID, int16 newBasis)
-        public
-        onlyAdmin
-    {
-        Asset storage asset = assets[assetID];
-        asset.nextBasis = newBasis;
-        emit BasisUpdated(assetID, asset.name, newBasis);
     }
 
     function changeAdmin(address newAdmin) 
@@ -181,11 +174,10 @@ contract MultiOracle {
     function getCurrentPrice(uint id)
         public
         view
-        returns (uint price, int16 basis)
+        returns (uint price)
     {
         require (msg.sender == admin || readers[msg.sender]);    
         price =  prices[id][assets[id].currentDay];
-        basis = assets[id].currentBasis;
     }
 
     function getPastPrices(uint id)

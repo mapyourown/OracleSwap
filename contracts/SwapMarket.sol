@@ -15,8 +15,7 @@ contract SwapMarket {
     uint public MIN_RM; // in ETH
     uint8 public OPEN_FEE; // in %
     uint8 public CANCEL_FEE; // in %
-    uint16 public BURN_FEE; // in %
-    uint16 public UNBALANCED_FEE;
+    uint16 public MAX_ORDER_LIMIT;
     address public admin;
 
     bool noTakerWithdraw;
@@ -28,24 +27,20 @@ contract SwapMarket {
 
     lpRates public defaultRates;
     
-    uint maxOrderLimit;
-    uint public EthLeveraging; // 6 extra decimals
     //lp specific info
     mapping(address => address) public books;
-    mapping(address => address) public lpChanges;
     mapping (address => lpRates) public rates;
     mapping(address => uint) public openMargins;
     mapping(address => uint) public balances;
     
-    uint8 constant public marginSafetyFactor = 100;
-    
+    uint public burnFees;
     uint public collectedFees;
-
     bool public isPaused;
 
-    event OpenMargin(address _lp, address _book);
+    event OpenMargin(address _lp, address _book, uint totalOpen);
     event OrderTaken(address _lp, address indexed taker, bytes32 id);
-    event FirstPrice(address _lp, uint _price);
+    event FirstPrice(address _lp, uint8 _startDay);
+    event Burn(address _lp, bytes32 _id, address sender);
     
     modifier onlyAdmin() {
         require (msg.sender == admin);
@@ -57,10 +52,10 @@ contract SwapMarket {
         _;
     }
     
-    constructor ( address priceOracle, uint assetID)
+    constructor (address _admin, address priceOracle, uint assetID)
         public
     {
-        admin = msg.sender;
+        admin = _admin;
         lpRates memory adminRates;
         // todo can't change
         adminRates.currentLong = 10;
@@ -70,7 +65,7 @@ contract SwapMarket {
 
         OPEN_FEE = 2; // 2%
         CANCEL_FEE = 3; // 3 %
-        BURN_FEE = 5; // 5%
+        MAX_ORDER_LIMIT = 20;
         
         oracle = MultiOracle(priceOracle);
         ASSET_ID = assetID;
@@ -84,20 +79,18 @@ contract SwapMarket {
     }   
 
     // Tools for being Liquidity provider
-    function increaseOpenMargin(uint amount) 
+    function increaseOpenMargin() 
         public
         payable
     {
-        require (msg.value == amount);
         if (books[msg.sender] == 0x0) // make a new book
             books[msg.sender] = new Book(msg.sender, this);
         openMargins[msg.sender] = openMargins[msg.sender].add(msg.value);
-        emit OpenMargin(msg.sender, books[msg.sender]);
+        emit OpenMargin(msg.sender, books[msg.sender], openMargins[msg.sender]);
     }
 
     function reduceOpenMargin(uint amount) 
         public
-        payable
     {
         require (openMargins[msg.sender] >= amount);
         openMargins[msg.sender] = openMargins[msg.sender].sub(amount);
@@ -108,13 +101,16 @@ contract SwapMarket {
     function getBookData(address lp)
         public
         view
-        returns (address book, uint totalLong, uint totalShort)
+        returns (address book, uint lpMargin, uint totalLong, uint totalShort, uint lpRM, uint numContracts)
     {
         book = books[lp];
         if (book != 0x0) {
             Book b = Book(book);
+            lpMargin = b.lpMargin();
             totalLong = b.totalLongMargin();
             totalShort = b.totalShortMargin();
+            lpRM = b.requiredMargin();
+            numContracts = b.numContracts();
         }
     }
 
@@ -186,19 +182,20 @@ contract SwapMarket {
         emit OrderTaken(lp, msg.sender, newId);
     }
 
-    function firstPrice(address lp)
+    function firstPrice(address lp, bool isFinalDay)
         public
         onlyAdmin
     {
-        if (books[lp] == 0x0)
-            return;
+        require(books[lp] != 0x0);
         Book b = Book(books[lp]);
         uint8 currentDay;
-        ( , , , currentDay, ,) = oracle.assets(ASSET_ID);
-        b.firstPrice(currentDay);
-        uint currentPrice;
-        (currentPrice, ) = oracle.getCurrentPrice(ASSET_ID);
-        emit FirstPrice(lp, currentPrice);
+        ( , , ,currentDay) = oracle.assets(ASSET_ID);
+        // want to start with the next day to be entered, which will be 0 on settlement days
+        uint8 startDay = currentDay + 1;
+        if (isFinalDay)
+            startDay = 0;
+        b.firstPrice(startDay);
+        emit FirstPrice(lp, startDay);
     }
 
     /*function computeReturns()
@@ -258,15 +255,12 @@ contract SwapMarket {
 
         // Want: LR * ETH/ETH for every day
         // Want: A_1/A_0 - 1 - basis for every day.
-        uint assetPrice;
-        int16 assetBasis;
-        (assetPrice, assetBasis) = oracle.getCurrentPrice(ASSET_ID);
+        uint assetPrice  = oracle.getCurrentPrice(ASSET_ID);
         uint[8] memory assetPastWeek;
         uint[8] memory lrPastWeek;
         (lrPastWeek, assetPastWeek) = oracle.getPastPrices(ASSET_ID);
 
-        uint ethPrice;
-        (ethPrice, ) = oracle.getCurrentPrice(0);
+        uint ethPrice = oracle.getCurrentPrice(0);
         uint[8] memory ethPastWeek;
         (, ethPastWeek) = oracle.getPastPrices(0);
 
@@ -275,7 +269,7 @@ contract SwapMarket {
             if (assetPastWeek[i] == 0)
                 continue;
             leverages[i] = lrPastWeek[i] * (ethPastWeek[i] * 1e6 ) / ethPrice; // add 6 more decimals
-            longReturns[i] = int(assetPrice * (1 ether)/ assetPastWeek[i]) - (1 ether) - (int(assetBasis) * 1 ether / 1e4);
+            longReturns[i] = int(assetPrice * (1 ether)/ assetPastWeek[i]) - (1 ether / 1e4);
             
         }
         longProfit = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));
@@ -285,8 +279,7 @@ contract SwapMarket {
         public
         onlyAdmin
     {
-        if (books[lp] == 0x0)
-            return; 
+        require(books[lp] != 0x0);
         Book b = Book(books[lp]);
 
         int[8] memory longReturns;
@@ -297,11 +290,6 @@ contract SwapMarket {
         
         b.settle(leverages, longReturns, longProfited);
         
-        if (lpChanges[lp] != 0x0)
-            lpModify(lp, lpChanges[lp]);
-        
-        lpChanges[lp] = 0x0;
-        
     }
     
     function setRate(int16 longRate, int16 shortRate)
@@ -310,20 +298,30 @@ contract SwapMarket {
         // 100 means 1%
         // LPs cannot be negative overall.
         require(0 < longRate + shortRate); 
-        require(longRate < 100 &&  shortRate < 100); 
-        require(longRate > -100 && shortRate > -100);
+        require(longRate < 200 &&  shortRate < 200); 
+        require(longRate > -200 && shortRate > -200);
         lpRates storage mRates = rates[msg.sender];
         mRates.currentLong = longRate;
         mRates.currentShort = shortRate;
+    }
+
+    function setMinimum(uint min)
+        public
+    {
+        Book b = Book(books[msg.sender]);
+        b.setMinimum(min * (1 ether));
     }
 
     function playerBurn(address lp, bytes32 id)
         public
         payable
     {
-        // TODO make sure only durring settle period
         Book b = Book(books[lp]);
-        b.burn.value(msg.value)(id, msg.sender);
+        uint fee = b.burn(id, msg.sender, msg.value);
+        burnFees = burnFees.add(fee);
+        balances[msg.sender] = balances[msg.sender].add(msg.value - fee);
+        emit Burn(lp, id, msg.sender);
+
     }
     
     function playerCancel(address lp, bytes32 id)
@@ -332,25 +330,8 @@ contract SwapMarket {
     {
         Book b = Book(books[lp]);
         uint lastSettleTime;
-        (, , lastSettleTime, , ,) = oracle.assets(ASSET_ID);
+        (, , lastSettleTime, ) = oracle.assets(ASSET_ID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, OPEN_FEE, CANCEL_FEE);
-    }
-    
-    function changelp(address _newlp)
-        public
-    {
-        lpChanges[msg.sender] = _newlp;
-    }
-    
-    function lpModify(address _oldlp, address _newlp)
-        internal
-        returns (bool valid)
-    {
-        if (books[_newlp] != 0x0)
-            return false;
-        books[_newlp] = books[_oldlp];
-        books[_oldlp] = 0x0;
-        return true;
     }
 
     function takerFund(address lp, bytes32 id)
@@ -404,17 +385,26 @@ contract SwapMarket {
         msg.sender.transfer(amount);
     }
 
-    function balanceTransfer(address reciever)
-        public
-        payable
-    {
-        balances[reciever] = balances[msg.sender].add(msg.value);
-    }
-
     function pause(bool newPaused)
         public
         onlyAdmin
     {
         isPaused = newPaused;
+    }
+
+    function balanceTransfer(address recipient)
+        public
+        payable
+    {
+        balances[recipient] = balances[recipient].add(msg.value);
+    }
+
+    function emptyBurn()
+        public
+        onlyAdmin
+    {
+        uint amount = burnFees;
+        burnFees = 0;
+        // TODO: Where send?
     }
 }
