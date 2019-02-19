@@ -37,15 +37,15 @@ contract Book {
 
     uint public takeMinimum;
 
-    uint public numContracts;
+    uint public contractNonce;
     
     uint public numEntries;
     bytes32 public head;
     bytes32 public tail;
     mapping(bytes32 => Subcontract) public subcontracts;
     bytes32[] public pendingContracts;
-    bytes32[] public longContracts;
-    bytes32[] public shortContracts;
+    bytes32[] public longContracts; //where lp is long
+    bytes32[] public shortContracts; // where lp is short
     mapping(bytes32 => uint) public indexes;
 
     uint public burnMargin;
@@ -59,8 +59,10 @@ contract Book {
     
     event OrderTaken(address indexed _taker, bytes32 indexed _id, uint _amount);
     event TakerDefault(address indexed _taker, bytes32 indexed _id);
+    event DeleteTraker(uint index, bool willDelete);
     
     struct Subcontract {			// should be all things unique to each order, that can change
+        uint index;
 		address Taker; 		// defaults to 0x0
 		uint256 TakerMargin;	// margin is in ETH
 		uint256 ReqMargin;
@@ -73,22 +75,6 @@ contract Book {
 		bool isBurned;
         bool newSubcontract;
 		bool makerBurned;
-	}
-	
-	function addSubcontract(bytes32 id, bool takerSide) 
-	    internal
-	{
-
-        if (takerSide)
-        {
-            indexes[id] = longContracts.length;
-            longContracts.push(id);
-        }
-        else
-        {
-            indexes[id] = shortContracts.length;
-            shortContracts.push(id);
-        }
 	}
 	
 	function deleteSubcontract (bytes32 id) 
@@ -185,13 +171,26 @@ contract Book {
         order.isPending = true;
         order.Taker = taker;
 
-        //bytes32 id = keccak256(abi.encodePacked(numContracts, lp, block.timestamp));
         bytes32 id = keccak256(abi.encodePacked(lp, block.timestamp, numContracts));
         numContracts += 1;
+
+        if (takerSide)
+        {
+            order.index = shortContracts.length;
+            shortContracts.push(id);
+        } else {
+            order.index = longContracts.length;
+            longContracts.push(id);
+        }
+        
         subcontracts[id] = order;
         pendingContracts.push(id);
+        if (takerSide)
+        {
+            order.index = shortContracts.length;
+
+        }
         emit OrderTaken(taker, id, RM);
-        addSubcontract(id, takerSide);
         return id;
     }
 
@@ -343,7 +342,7 @@ contract Book {
 
     function settleSubcontract(bytes32 id, uint[8] leverages, int[8] longReturns)
         internal
-        returns(bool)
+        returns (bool deleted)
     {
         Subcontract storage k = subcontracts[id];
 
@@ -401,7 +400,7 @@ contract Book {
         // close if killed or cancelled, will refund everyone
         if (k.isBurned || k.isCancelled) {
             deleteSubcontract(id);
-            return;
+            return true;
         }
         
         // setup for next week
@@ -414,29 +413,37 @@ contract Book {
             lpMargin = lpMargin.add(toSub);
             emit TakerDefault(k.Taker, id);
             deleteSubcontract(id);
+            return true;
         }
+
+        return false;
     }
 
     function settle(uint[8] leverages, int[8] longReturns, bool longProfited)
         public
         onlyAdmin
     {
+        bool toDelete;
         if (longProfited)
         {
             for (uint i = 0; i < shortContracts.length; i++) {
-                settleSubcontract(shortContracts[i], leverages, longReturns);
+                if (settleSubcontract(shortContracts[i], leverages, longReturns))
+                    i--;
             }   
             for (i = 0; i < longContracts.length; i++) {
-                settleSubcontract(longContracts[i], leverages, longReturns);
+                if (settleSubcontract(longContracts[i], leverages, longReturns))
+                    i--;
             }
         }
         else
         {  
             for (i = 0; i < longContracts.length; i++) {
-                settleSubcontract(longContracts[i], leverages, longReturns);
+                if (settleSubcontract(longContracts[i], leverages, longReturns))
+                    i--;
             }
             for (i = 0; i < shortContracts.length; i++) {
-                settleSubcontract(shortContracts[i], leverages, longReturns);
+                if (settleSubcontract(shortContracts[i], leverages, longReturns))
+                    i--;
             }
         }
 
