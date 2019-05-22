@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "./SwapMarket.sol";
+import "./AssetSwap.sol";
 
 library Utils {
     using SafeMath for uint;
@@ -34,10 +34,8 @@ contract Book {
     uint public totalLongMargin;
     uint public totalShortMargin;
     uint public totalNewMargin;
-
     uint public takeMinimum;
-
-    uint public contractNonce;
+    uint public numContracts;
     
     uint public numEntries;
     bytes32 public head;
@@ -49,6 +47,12 @@ contract Book {
     mapping(bytes32 => uint) public indexes;
 
     uint public burnMargin;
+
+    bool public lpDefaulted;
+
+    uint public bookMin;
+
+    uint public DEFAULT_FEE = 125; // in tenths of a percent
 
     
     modifier onlyAdmin()
@@ -66,7 +70,6 @@ contract Book {
 		address Taker; 		// defaults to 0x0
 		uint256 TakerMargin;	// margin is in ETH
 		uint256 ReqMargin;
-        int16 MarginRate;
         uint8 InitialDay;
 		bool Side;
 		bool isInitialized;
@@ -75,6 +78,7 @@ contract Book {
 		bool isBurned;
         bool newSubcontract;
 		bool makerBurned;
+        bool isTerminated;
 	}
 	
 	function deleteSubcontract (bytes32 id) 
@@ -113,30 +117,23 @@ contract Book {
     function getSubcontract(bytes32 id)
         public
         view
-        returns (uint takerMargin, uint reqMargin, int16 marginRate, uint8 initialDay,
+        returns (uint takerMargin, uint reqMargin, uint8 initialDay,
           bool side, bool isCancelled, bool isBurned)
     {
         Subcontract storage k = subcontracts[id];
         takerMargin = k.TakerMargin;
         reqMargin = k.ReqMargin;
-        marginRate = k.MarginRate;
         initialDay = k.InitialDay;
         side = k.Side;
         isCancelled = k.isCancelled;
         isBurned = k.isBurned;
     }
 	
-	constructor(address _lp, address _admin) public {
+	constructor(address _lp, address _admin, uint minBalance) public {
 		admin = _admin;
 		lp = _lp;
+        bookMin = minBalance;
 	}
-
-    function setTakeMinimum(uint min)
-        public
-        onlyAdmin
-    {
-        takeMinimum = min;
-    }
 
     function requiredMargin()
         public
@@ -149,21 +146,20 @@ contract Book {
             return totalShortMargin - totalLongMargin + totalNewMargin;
     }
 	
-	function take(address taker, uint amount, bool takerSide, int16 rate)
+	function take(address taker, uint amount, bool takerSide)
         public
         payable
         onlyAdmin
         returns (bytes32)
     {
-        require(amount > takeMinimum);
-        uint RM = amount; 
+        require(amount > bookMin);
+        uint RM = amount * 1 ether; 
         uint makerShare = msg.value.sub(RM);
         totalNewMargin = totalNewMargin.add(RM);
         lpMargin = lpMargin.add(makerShare);
 
         Subcontract memory order;
         order.ReqMargin = RM;
-        order.MarginRate = rate;
         order.Side = !takerSide;
         order.isInitialized = true;
         order.TakerMargin = RM;
@@ -227,7 +223,7 @@ contract Book {
         delete pendingContracts;
     }
     
-    function makerDefault(uint8 cancelFeePercentage)
+    function lpDefault(uint8 cancelFeePercentage)
         internal
     {
         // cancel pending contracts first
@@ -269,19 +265,19 @@ contract Book {
         onlyAdmin
     {
         Subcontract storage k = subcontracts[id];
-		require(sender == k.Taker || sender == lp);
-        require(!k.isCancelled);
+		require(sender == k.Taker || sender == lp, "Canceller is not LP or Taker");
+        require(!k.isCancelled, "Subcontract is already cancelled");
 		uint fee;
 		if (k.isPending) {
 			fee = (k.ReqMargin * openFee)/100;
 		} else {
 			if (priceTime > lastSettleTime) // settlement period
             {
-                require(sender != k.Taker); // taker cannot cancel during settle
+                require(sender != k.Taker, "Taker cannot cancel during settle"); // taker cannot cancel during settle
             }
             fee = (k.ReqMargin * cancelFee)/100;
 		}
-		require(msg.value >= fee);
+		require(msg.value >= fee, "Insufficient cancel fee");
 		if (sender == k.Taker)
 		    lpMargin = lpMargin.add(fee);
 	    else if (sender == lp)
@@ -289,6 +285,15 @@ contract Book {
         //balances[sender] += (msg.value - fee);
         balanceSend(msg.value - fee, sender);
 	    k.isCancelled = true;
+    }
+
+    function adminCancel(bytes32 id)
+        public
+        payable
+        onlyAdmin
+    {
+        Subcontract storage k = subcontracts[id];
+        k.isCancelled = true;
     }
     
     function burn( bytes32 id, address sender, uint amount)
@@ -302,7 +307,7 @@ contract Book {
         require(!k.isBurned);
         
         // cost to kill
-		uint burnFee = k.ReqMargin/3;
+		uint burnFee = k.ReqMargin/4;
 		require (amount >= burnFee);
 		if (msg.sender == lp)
 			k.makerBurned = true;
@@ -311,18 +316,28 @@ contract Book {
         return burnFee;
     }
     
-    function takerWithdrawal(bytes32 id, uint amount, address sender)
+    function takerWithdrawal(bytes32 id, uint amount, uint lastOracleSettlePrice, address sender)
         public
         onlyAdmin
     {
         Subcontract storage k = subcontracts[id];
-        require(k.TakerMargin >= k.ReqMargin.add(amount));
+        require(lastOracleSettlePrice < k.lastSettleTime,
+            "Taker cannot withdraw during the settle period.");
+
+        if (lpDefaulted)
+        {
+            require(amount <= k.TakerMargin);
+        }
+        else
+        {
+            require(k.TakerMargin >= k.ReqMargin.add(amount));
+        }
+        
         k.TakerMargin = k.TakerMargin.sub(amount);
-        //balances[sender] = balances[sender].add(amount);
         balanceSend(amount, sender);
     }
 
-    function pnlCalculation(uint leverage, int longReturn, uint reqMargin, int16 marginRate, bool makerSide)
+    function pnlCalculation(uint leverage, int longReturn, uint reqMargin, bool makerSide)
         internal
         pure
         returns(int makerPNL)
@@ -330,9 +345,9 @@ contract Book {
         int intMargin = int(reqMargin);
 
         if (makerSide)
-            makerPNL = (intMargin/1e12 * int(leverage) * (longReturn + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
+            makerPNL = (intMargin/1e12 * int(leverage) * longReturn + (1 ether)/1e4)/(1 ether);
         else
-            makerPNL = (intMargin/1e12 * int(leverage) * ((-1 * longReturn) + (int(marginRate) * (1 ether)/1e4)))/(1 ether);
+            makerPNL = (intMargin/1e12 * int(leverage) * ((-1 * longReturn) + ((1 ether)/1e4)))/(1 ether);
 
         if (makerPNL > intMargin)
             makerPNL = intMargin;
@@ -355,8 +370,7 @@ contract Book {
             k.newSubcontract = false;
         } else {
          
-            int makerPNL = pnlCalculation(leverages[k.InitialDay], longReturns[k.InitialDay], k.ReqMargin,
-                k.MarginRate, k.Side);
+            int makerPNL = pnlCalculation(leverages[k.InitialDay], longReturns[k.InitialDay], k.ReqMargin, k.Side);
                 
             uint toTake;
 
@@ -404,18 +418,16 @@ contract Book {
         }
         
         // setup for next week
+        // this is the case the taker defaulted
         if (k.TakerMargin < k.ReqMargin)
         {
-            uint toSub = Utils.maxSubtract(k.TakerMargin, 100);
-            // TODO: fix
-                //k.ReqMargin.mul(burnFee)/100);
+            uint toSub = Utils.maxSubtract(k.TakerMargin, k.ReqMargin.mul(DEFAULT_FEE)/1000);
             k.TakerMargin = k.TakerMargin.sub(toSub);
-            lpMargin = lpMargin.add(toSub);
+            balanceSend(amount, SwapMarket(admin).admin);
             emit TakerDefault(k.Taker, id);
             deleteSubcontract(id);
             return true;
         }
-
         return false;
     }
 
@@ -423,7 +435,7 @@ contract Book {
         public
         onlyAdmin
     {
-        bool toDelete;
+        // todo timestamp 4 days
         if (longProfited)
         {
             for (uint i = 0; i < shortContracts.length; i++) {
@@ -450,6 +462,15 @@ contract Book {
         totalNewMargin = 0;
         lastSettleTime = block.timestamp;
         burnMargin = 0;
+
+        uint req = requiredMargin();
+        if (lpMargin < req)
+        {
+            lpDefaulted = true;
+            uint toSub = Utils.maxSubtract(lpMargin, req.mul(DEFAULT_FEE)/1000);
+            lpMargin = lpMargin - toSub;
+            balanceSend(toSub, SwapMarket(admin).admin)
+        }
     }
     
     function lpMarginWithdrawal(uint amount)
@@ -459,23 +480,35 @@ contract Book {
         uint req = requiredMargin();
         require (lpMargin >= req.add(amount));
         lpMargin = lpMargin.sub(amount);
-        balanceSend(amount, lp); //balances[lp] = balances[lp].add(amount);
+        balanceSend(amount, lp);
     }
 
     function abandonedSelfDestruct(bytes32 id) // set the RM to zero
         public
     {
-        require (block.timestamp > lastSettleTime + (20 days));
+        require (block.timestamp > lastSettleTime + (8 days));
         require (lastSettleTime != 0); // set to 0 initially
 
         deleteSubcontract(id);
     }
 
+    function lpDefaultedRefund(bytes32 id)
+        public
+    {
+        require(lpDefaulted);
+        deleteSubcontract(id);
+    }
+
+    function redeemSubcontract(bytes32 id)
+    {
+
+    }
+
     function balanceSend(uint amount, address reciever)
         internal
     {
-        SwapMarket market = SwapMarket(admin);
-        market.balanceTransfer.value(amount)(reciever);
+        AssetSwap swap = AssetSwap(admin);
+        swap.balanceTransfer.value(amount)(reciever);
     }
 
     function setMinimum(uint amount)
@@ -483,6 +516,22 @@ contract Book {
         onlyAdmin
     {
         takeMinimum = amount;
+    }
+
+    function returnLongLenth()
+        public
+        view
+        returns (uint)
+    {
+        return longContracts.length;
+    }
+
+    function returnShortLength()
+        public
+        view
+        returns (uint)
+    {
+        return shortContracts.length;
     }
 
 }
