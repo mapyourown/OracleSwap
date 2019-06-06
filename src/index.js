@@ -6,11 +6,13 @@ import { DrizzleProvider } from 'drizzle-react'
 
 // Layouts
 import App from './App'
-import HomeContainer from './layouts/home/HomeContainer'
+import SplashContainer from './layouts/Splash/SplashContainer'
 import MakerHomeContainer from './layouts/LP/LPHomeContainer'
 import TakerHomeContainer from './layouts/Taker/TakerHomeContainer'
 import OracleHomeContainer from './layouts/Oracle/OracleHomeContainer'
 import MultiOracleContainer from './layouts/Oracle/MultiOracleContainer'
+import OffersContainer from './layouts/Offers/OffersContainer'
+import LPDetailsContainer from './layouts/LP/LPDetailsContainer'
 import { LoadingContainer } from 'drizzle-react-components'
 
 import store from './store'
@@ -24,10 +26,16 @@ ReactDOM.render((
       <LoadingContainer>
         <Router history={history}>
           <Route path="/" component={App}>
-            <IndexRoute component={HomeContainer} />
+            <IndexRoute component={SplashContainer} />
           </Route>
           <Route path="/make" component={App}>
             <IndexRoute component={MakerHomeContainer} />
+          </Route>
+          <Route path="/lpdetails" component={App}>
+            <IndexRoute component={LPDetailsContainer} />
+          </Route>
+          <Route path="/offers" component={App}>
+            <IndexRoute component={OffersContainer} />
           </Route>
           <Route path="/take" component={App}>
             <IndexRoute component={TakerHomeContainer} />

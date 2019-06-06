@@ -36,5 +36,18 @@ Node.js is required to run the server.
     ```javascript
     npm run start
     ```
-
 6. Verfify the front end is running at http://localhost:3000 in browser
+
+## Testing the Contract
+
+Start the ganache-cli test chain
+
+    `ganache-cli -b 1 -a 200 -e 1000`
+
+In a separate window, run the tests
+
+    `truffle test test/testswap.js`
+
+## Deploying to the live network
+
+    `truffle migrate --network live`

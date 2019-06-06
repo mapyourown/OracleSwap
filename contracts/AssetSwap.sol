@@ -11,30 +11,30 @@ contract AssetSwap {
     Oracle public oracle;
     
     uint public ASSET_ID;
-    address public BURN_ADDRESS = 0xDEAD;
+    address constant BURN_ADDRESS = 0xDEAD;
 
     uint public lastComputeReturnsTime;
 
-    // isCryptoSettled
-    // 6 decimal places for each, 2500000 = 2.5
-    uint public currentLeverageRatios;
-    uint public nextLeverageRatios;
-
-    uint public MIN_RM; // in wei
-    uint8 public CLOSE_FEE; // in tenths of a %
+    uint constant MIN_RM = 10 ether; // in wei
+    uint constant CLOSE_FEE = 15; // in tenths of a %
+    uint constant BURN_FEE = 250; // in tenths of a %
     uint16 public MAX_ORDER_LIMIT;
-    int16 public takerLongRate;
-    int16 public takerShortRate;
-    int16 public nextTakerLongRate;
-    int16 public nextTakerShortRate;
+    int16 public takerLongRate; // in tenths of a %
+    int16 public takerShortRate; // in tenths of a %
+    int16 public nextTakerLongRate; // in tenths of a %
+    int16 public nextTakerShortRate; // in tenths of a %
+    uint16 public returnsLeverageRatio; // in hundredths
     uint16 public leverageRatio;
     uint16 public nextLeverageRatio;
     uint public maxOpenBalance;
     address public admin;
 
+    uint[4] public tierCutoffs;
+    uint[4] public tierMinOpens;
+
     // For making profit
-    int[8] private longReturns;
-    int[8] private shortReturns;
+    int[8] private takerLongReturns;
+    int[8] private takerShortReturns;
     bool public longProfited;
 
     uint[] public minRMs;
@@ -74,8 +74,6 @@ contract AssetSwap {
         public
     {
         admin = _admin;
-
-        CLOSE_FEE = 15; // 1.5 %
         MAX_ORDER_LIMIT = 20;
         
         oracle = Oracle(priceOracle);
@@ -83,12 +81,14 @@ contract AssetSwap {
 
         isPaused = false;
 
-        MIN_RM = 10 ether;
+        tierCutoffs = [25, 100, 250, 1e6];
+        tierMinOpens = [20, 50, 100, 250];
+
     }
 
     /** Adjust the Long and Short rates for all contracts
-    * @param target the new target rate
-    * @param basis the new basis rate
+    * @param target the new target rate in tenths of a percent
+    * @param basis the new basis rate in tenths of a percent
     * @dev the "long rate" is target - basis, the "short rate" is target + basis
     * @dev the new rates won't go into effect until the following week after ComputeReturns is called
     */
@@ -108,6 +108,18 @@ contract AssetSwap {
         require(0 < nextTakerLongRate + nextTakerShortRate, "Long + Short must be > 0"); 
         
         emit RatesUpdated(target, basis);
+    }
+
+    /** Adjust the maximum take sizes for each tier as well as the minimum open balance for that tier
+    * @param tiers a uint array of the maximum take size for the tier IN ETH
+    * @param minimums a unint array of each tier minimum open balance IN ETH
+    */
+    function setTiers(uint[4] tiers, uint[4] minimums)
+        public
+        onlyAdmin
+    {
+        tierCutoffs = tiers;
+        tierMinOpens = minimums;
     }
 
     function adminCancel(address lp, bytes32 id)
@@ -131,15 +143,47 @@ contract AssetSwap {
         emit LeverageRatioUpdated(newRatio);
     }
 
-    /** Allows a user to be a liquidity provider and add to their Open Balance
+    /** Allow the LP to create a new book
+    * @param min the minimum take size in ETH for the book
+    */
+    function createBook(uint min)
+        public
+    {
+        require (books[msg.sender] == 0x0, "User must not have a preexisting book");
+        books[msg.sender] = new Book(msg.sender, this, min);
+    }
+
+    /** Allows a user to add to their Open Balance as a liquidity provider
+    * @notice the user must add sufficient balance to meet the minimum for their min take tier
     * @dev the message value is automatically added
     */
     function increaseOpenBalance() 
         public
         payable
     {
-        if (books[msg.sender] == 0x0) // make a new book
-            books[msg.sender] = new Book(msg.sender, this);
+        require (books[msg.sender] != 0x0, "Sender does not have a book");
+        Book b = Book(books[msg.sender]);
+        uint bookMin = b.BOOK_TAKE_MIN();
+        if (bookMin < tierCutoffs[0] * 1 ether)
+        {
+            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[0] * 1 ether,
+                "Must have make with sufficient open balance for the tier.");
+        } 
+        else if (bookMin < tierCutoffs[1] * 1 ether)
+        {
+            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[1] * 1 ether,
+                "Must have make with sufficient open balance for the tier.");
+        }
+        else if (bookMin < tierCutoffs[2] * 1 ether)
+        {
+            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[2] * 1 ether,
+                "Must have make with sufficient open balance for the tier.");
+        }
+        else if (bookMin < tierCutoffs[3] * 1 ether)
+        {
+            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[3] * 1 ether,
+                "Must have make with sufficient open balance for the tier.");
+        }
         openBalances[msg.sender] = openBalances[msg.sender].add(msg.value);
         emit OpenBalance(books[msg.sender], msg.sender, openBalances[msg.sender]);
     }
@@ -154,26 +198,6 @@ contract AssetSwap {
         openBalances[msg.sender] = openBalances[msg.sender].sub(amount);
         withdrawBalances[msg.sender] = withdrawBalances[msg.sender].add(amount);
         emit OpenBalance(books[msg.sender], msg.sender, openBalances[msg.sender]);
-    }
-
-    /** Allow the LP to set a specific take minimum for their book
-    * @param min the amount in ETH that is the new desired minimum
-    */
-    function setMinimum(uint min)
-        public
-    {
-        require (books[msg.sender] != 0x0, "User does not have a book");
-        Book b = Book(books[msg.sender]);
-        b.setMinimum(min * (1 ether));
-    }
-
-    /** Allow the LP to create a new book
-    * @param min the minimum take size in ETH for the book
-    */
-    function createBook(uint min)
-    {
-        require (books[msg.sender] == 0x0, "User must not have a preexisting book");
-        books[msg.sender] = new Book(msg.sender, this, min);
     }
 
     /** Take a new subcontract with an LP
@@ -240,7 +264,7 @@ contract AssetSwap {
         Book b = Book(books[lp]);
         uint lastSettleTime;
         (, , lastSettleTime, ,) = oracle.assets(ASSET_ID);
-        b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, 0, CANCEL_FEE);
+        b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, 0, CLOSE_FEE);
     }
 
     /** Adds value to the taker's margin
@@ -280,7 +304,7 @@ contract AssetSwap {
         
         Book b = Book(books[lp]);
         uint lastOracleSettleTime;
-        (, ,lastOracleSettleTime, , ) = oracle.Assets(ASSET_ID);
+        (, ,lastOracleSettleTime, , ) = oracle.assets(ASSET_ID);
 
         // will revert if during settle period
         b.takerWithdrawal(id, amount, lastOracleSettleTime, msg.sender);
@@ -295,7 +319,11 @@ contract AssetSwap {
         require(books[msg.sender] != 0x0);
         
         Book b = Book(books[msg.sender]);
-        b.lpMarginWithdrawal(amount);
+        uint lastOracleSettleTime;
+        (, ,lastOracleSettleTime, , ) = oracle.assets(ASSET_ID);
+
+        // Will revert if during settle period
+        b.lpMarginWithdrawal(amount, lastOracleSettleTime);
     }
 
     /** Sends the owed balance to a user stored on this contract to an external address
@@ -316,11 +344,19 @@ contract AssetSwap {
     * @return totalShort the total RM of all short contracts the LP is engaged in
     * @return lpRM the margin required for the LP
     * @return numContracts the number of subcontracts that the lp has in their book
+    * @return bookMinimum the minimum size in wei to make a subcontract with this book
     */
     function getBookData(address lp)
         public
         view
-        returns (address book, uint lpMargin, uint totalLong, uint totalShort, uint lpRM, uint numContracts)
+        returns ( address book,
+            uint lpMargin,
+            uint totalLong,
+            uint totalShort,
+            uint lpRM, 
+            uint numContracts,
+            uint bookMinimum,
+            bool lpDefaulted)
     {
         book = books[lp];
         if (book != 0x0) {
@@ -330,6 +366,8 @@ contract AssetSwap {
             totalShort = b.totalShortMargin();
             lpRM = b.requiredMargin();
             numContracts = b.numContracts();
+            bookMinimum = b.BOOK_TAKE_MIN();
+            lpDefaulted = b.lpDefaulted();
         }
     }
 
@@ -351,14 +389,16 @@ contract AssetSwap {
             uint reqMargin,
             uint8 initialDay,
             bool side, 
+            bool isPending,
             bool isCancelled, 
             bool isBurned)
+            //bool toDelete)
     {
         address book = books[lp];
         if (book != 0x0) {
             Book b = Book(book);
-            (takerMargin, reqMargin, initialDay,
-                side, isCancelled, isBurned) = b.getSubcontract(id);
+            (takerMargin, reqMargin, initialDay,side,
+                isPending, isCancelled, isBurned/*, toDelete*/) = b.getSubcontract(id);
         }
     }
 
@@ -392,38 +432,39 @@ contract AssetSwap {
         onlyAdmin
     {
 
-        // Todo: timing restrictions?
-        // > last OPC Update
-        // Can't call multiple times because Rate
-        // DO returns here
-
         // at least 3 days between returns
         require(lastComputeReturnsTime < 3 days);
-
-
-        /*
 
         // Want: LR * ETH/ETH for every day
         // Want: A_1/A_0 - 1 - basis for every day.
         uint assetPrice  = oracle.getCurrentPrice(ASSET_ID);
-        uint[8] memory assetPastWeek;
-        uint lrPastWeek;
-        (lrPastWeek, assetPastWeek) = oracle.getPastPrices(ASSET_ID);
-
         uint ethPrice = oracle.getCurrentPrice(0);
+        
+        /*uint[8] memory assetPastWeek;
         uint[8] memory ethPastWeek;
-        (, ethPastWeek) = oracle.getPastPrices(0);
+        assetPastWeek = oracle.lastWeekPrices(ASSET_ID);
+        ethPastWeek = oracle.lastWeekPrices(0);*/
+
+        uint assetPastPrice;
+        uint ethPastPrice;
 
         for (uint8 i = 0; i < 8; i++)
         {
-            if (assetPastWeek[i] == 0)
+            assetPastPrice = oracle.lastWeekPrices(ASSET_ID, i);
+            ethPastPrice = oracle.lastWeekPrices(0, i);
+            if (assetPastPrice == 0 || ethPastPrice == 0)
                 continue;
-            //leverages[i] = lrPastWeek[i] * (ethPastWeek[i] * 1e6 ) / ethPrice; // add 6 more decimals
-            //longReturns[i] = int(assetPrice * (1 ether)/ assetPastWeek[i]) - (1 ether / 1e4);
-            
-        }
-        //longProfit = (assetPrice > oracle.lastWeekPrices(0, ASSET_ID));*/
 
+            int assetReturn = int((assetPastPrice * (1 ether)) / assetPrice) - 1 ether;
+            takerLongReturns[i] = assetReturn - int(takerLongRate) * (1 ether)/1e3;
+            takerLongReturns[i] = (takerLongReturns[i] * int(returnsLeverageRatio * ethPastPrice))/int(ethPrice * 100);
+            takerShortReturns[i] = (-1 * assetReturn) - int(takerShortRate) * (1 ether)/1e3;
+            takerShortReturns[i] = (takerShortReturns[i] * int(returnsLeverageRatio * ethPastPrice))/int(ethPrice * 100);
+        }
+        
+        longProfited = (assetPrice > oracle.lastWeekPrices(ASSET_ID, 0));
+
+        returnsLeverageRatio = leverageRatio;
         leverageRatio = nextLeverageRatio;
         takerLongRate = nextTakerLongRate;
         takerShortRate = nextTakerShortRate;
@@ -439,17 +480,13 @@ contract AssetSwap {
     {
         require(books[lp] != 0x0);
         Book b = Book(books[lp]);
-        uint[8] memory leverages;
 
         // Can't be settled if not a settle day
         uint lastAssetSettleTime;
-        (, , lastAssetSettleTime, , ) = oracle.assets(assetID);
+        (, , lastAssetSettleTime, , ) = oracle.assets(ASSET_ID);
         require(lastComputeReturnsTime > lastAssetSettleTime);
-
-
-        computeReturns();
         
-        b.settle(leverages, longReturns, longProfited);
+        b.settle(takerLongReturns, takerShortReturns, longProfited);
         
     }
 
@@ -472,10 +509,10 @@ contract AssetSwap {
         uint amount = burnFees;
         burnFees = 0;
         BURN_ADDRESS.transfer(amount);
-        // TODO: Where send?
     }
 
     /** Credit a users balance with the message value
+    * @param recipient the user to get balance
     * @dev used by the Book when it needs to give players value
     */
     function balanceTransfer(address recipient)
@@ -485,15 +522,27 @@ contract AssetSwap {
         withdrawBalances[recipient] = withdrawBalances[recipient].add(msg.value);
     }
 
+    /** Terminate a defaulted/burned/cancelled subcontract
+    * @param lp the address of the lp with the subcontract
+    * @param id the subcontract id
+    */
+    function redeem(address lp, bytes32 id)
+        public
+    {
+        require(books[lp] != 0x0);
+        Book b = Book(books[lp]);
+        b.redeemSubcontract(id);
+
+    }
+
     function checkLengthDEBUG(address maker)
         public
+        view
+        returns (uint long, uint short)
     {
         require(books[maker] != 0x0);
         Book b = Book(books[maker]);
-        uint long = b.returnLongLenth();
-        uint short = b.returnShortLength();
-
-        emit DEBUG("Long: ", long);
-        emit DEBUG("Short: ", short);
+        long = b.returnLongLenth();
+        short = b.returnShortLength();
     }
 }

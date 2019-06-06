@@ -6,6 +6,11 @@ import "./AssetSwap.sol";
 library Utils {
     using SafeMath for uint;
     
+    /** Utility function to find out the largest amount that can be taken from one unsigned value
+    * @param minuend the amount to take
+    * @param subtrahend the amount being taken from
+    * equivalent to max(minuend, subtrahend)
+    */
     function maxSubtract(uint minuend, uint subtrahend)
         internal
         pure
@@ -25,7 +30,7 @@ contract Book {
     address constant public burnAddress = 0x0;
     
     address public lp;
-    address public admin;
+    AssetSwap public assetSwap;
     uint public lastSettleTime;
     
     uint public lpMargin;
@@ -38,26 +43,25 @@ contract Book {
     uint public numContracts;
     
     uint public numEntries;
-    bytes32 public head;
-    bytes32 public tail;
     mapping(bytes32 => Subcontract) public subcontracts;
     bytes32[] public pendingContracts;
-    bytes32[] public longContracts; //where lp is long
-    bytes32[] public shortContracts; // where lp is short
+    bytes32[] public shortTakerContracts; //where lp is long
+    bytes32[] public longTakerContracts; // where lp is short
     mapping(bytes32 => uint) public indexes;
 
     uint public burnMargin;
 
     bool public lpDefaulted;
 
-    uint public bookMin;
-
-    uint public DEFAULT_FEE = 125; // in tenths of a percent
+    uint public BOOK_TAKE_MIN;
+    uint constant DEFAULT_FEE = 125; // in tenths of a percent
+    uint constant TIME_TO_SELF_DESTRUCT = 8 days;
+    uint constant MAX_SUBCONTRACTS = 100;
 
     
     modifier onlyAdmin()
     {
-        require(msg.sender == admin);
+        require(msg.sender == address(assetSwap));
         _;
     }
     
@@ -76,12 +80,30 @@ contract Book {
         bool isPending;
 		bool isCancelled; 	// if a player cancels, set this to true
 		bool isBurned;
-        bool newSubcontract;
 		bool makerBurned;
-        bool isTerminated;
+        bool toDelete;
 	}
+
+    /** Sets up a new Book for an LP.
+    * @notice each LP should have only one book
+    * @dev the minumum take size is established here and never changes
+    * @param user the address of the LP the new book should belong to
+    * @param admin the address responsible for managing the Book (should be the assetSwap)
+    * @param minBalance the minimum balance size in ETH
+    */
+    constructor(address user, address admin, uint minBalance)
+        public 
+    {
+        assetSwap = AssetSwap(admin);
+        lp = user;
+        BOOK_TAKE_MIN = minBalance.mul(1 ether);
+    }
 	
-	function deleteSubcontract (bytes32 id) 
+    /** Internal function for removing a subcontract from storage.
+    * @notice automatically refunds the balances and does the proper accounting for the taker
+    * @param id the id of the subcontract to erase
+    */
+	function deleteSubcontract(bytes32 id) 
 	    internal
     {
 
@@ -89,52 +111,72 @@ contract Book {
 		
         uint tMargin = k.TakerMargin;
         k.TakerMargin = 0;
+        
+        balanceSend(tMargin, k.Taker);
+
+        // implicitly delete by swapping with last element and shortening
+        uint index = indexes[id];
+        if (k.Side) {
+            shortTakerContracts[index] = shortTakerContracts[shortTakerContracts.length - 1];
+            shortTakerContracts.length--;
+        } else {
+            longTakerContracts[index] = longTakerContracts[longTakerContracts.length - 1];
+            longTakerContracts.length--;
+        }
+            
+        Subcontract memory blank;
+        subcontracts[id] = blank;
+        numEntries--;
+	}
+    /** Internal function for removing a subcontract from consideration.
+    * @notice the contract should be redeemed after this
+    * @param id the id of the subcontract to erase
+    */
+    function markForDeletion(bytes32 id)
+        internal
+    {
+        Subcontract storage k = subcontracts[id];
         uint rMargin = k.ReqMargin;
-        if (!k.newSubcontract)
+        if (!k.isPending)
         {
             if (k.Side)
                 totalLongMargin = totalLongMargin.sub(rMargin);
             else
                 totalShortMargin = totalShortMargin.sub(rMargin);
         }
-        //balances[ll.k.Taker] = balances[ll.k.Taker].add(tMargin);
-        balanceSend(tMargin, k.Taker);
+        k.toDelete = true;
+    }
 
-        // implicitly delete by swapping with last element and shortening
-        uint index = indexes[id];
-        if (k.Side) {
-            longContracts[index] = longContracts[longContracts.length - 1];
-            longContracts.length--;
-        } else {
-            shortContracts[index] = shortContracts[shortContracts.length - 1];
-            shortContracts.length--;
-        }
-            
-        Subcontract memory blank;
-        subcontracts[id] = blank;
-	}
-
+    /** This function returns the stored values of a subcontract
+    * @param id the subcontract id
+    * @return takerMargin the takers actual margin balance
+    * @return reqMargin the required margin for both parties for the subcontract
+    * @return initialDay the integer value corresponding to the index (day) for retrieving prices
+    * @return side the side of the contract in terms of the LP
+    * @return isCancelled if true, the subcontract has been marked as cancelled
+    * @return isBurned if true, the subconract has been marked as burned
+    * @return toDelete if true, the subcontract has been evaluated the last time and should be deleted
+    */
     function getSubcontract(bytes32 id)
         public
         view
         returns (uint takerMargin, uint reqMargin, uint8 initialDay,
-          bool side, bool isCancelled, bool isBurned)
+          bool side, bool isPending, bool isCancelled, bool isBurned)//, bool toDelete)
     {
         Subcontract storage k = subcontracts[id];
         takerMargin = k.TakerMargin;
         reqMargin = k.ReqMargin;
         initialDay = k.InitialDay;
         side = k.Side;
+        isPending = k.isPending;
         isCancelled = k.isCancelled;
         isBurned = k.isBurned;
+        //toDelete = k.toDelete;
     }
-	
-	constructor(address _lp, address _admin, uint minBalance) public {
-		admin = _admin;
-		lp = _lp;
-        bookMin = minBalance;
-	}
 
+    /** Return the required margin of the LP
+    * @return RM the lp's required margin
+    */
     function requiredMargin()
         public
         view
@@ -145,14 +187,21 @@ contract Book {
         else
             return totalShortMargin - totalLongMargin + totalNewMargin;
     }
-	
+
+    /** Create a new subcontract of the given parameters
+    * @param taker the address of the party on the other side of the contract
+    * @param amount the amount in ETH to create the subcontract for
+    * @param takerSide the side (long = true) the taker is taking
+    * @return id the id of the newly created subcontract
+	*/
 	function take(address taker, uint amount, bool takerSide)
         public
         payable
         onlyAdmin
-        returns (bytes32)
+        returns (bytes32 id)
     {
-        require(amount > bookMin);
+        require(amount * 1 ether >= BOOK_TAKE_MIN);
+        require(numEntries < MAX_SUBCONTRACTS);
         uint RM = amount * 1 ether; 
         uint makerShare = msg.value.sub(RM);
         totalNewMargin = totalNewMargin.add(RM);
@@ -163,33 +212,36 @@ contract Book {
         order.Side = !takerSide;
         order.isInitialized = true;
         order.TakerMargin = RM;
-        order.newSubcontract = true;
         order.isPending = true;
         order.Taker = taker;
 
-        bytes32 id = keccak256(abi.encodePacked(lp, block.timestamp, numContracts));
+        id = keccak256(abi.encodePacked(lp, block.timestamp, numContracts));
         numContracts += 1;
 
         if (takerSide)
         {
-            order.index = shortContracts.length;
-            shortContracts.push(id);
+            order.index = longTakerContracts.length;
+            longTakerContracts.push(id);
         } else {
-            order.index = longContracts.length;
-            longContracts.push(id);
+            order.index = shortTakerContracts.length;
+            shortTakerContracts.push(id);
         }
         
         subcontracts[id] = order;
         pendingContracts.push(id);
         if (takerSide)
         {
-            order.index = shortContracts.length;
+            order.index = longTakerContracts.length;
 
         }
+        numEntries++;
         emit OrderTaken(taker, id, RM);
         return id;
     }
 
+    /** Deposit wei into the LP margin
+    * @notice the message value is directly deposited
+    */
     function fundlpMargin()
         public
         payable
@@ -197,15 +249,22 @@ contract Book {
         lpMargin = lpMargin.add(msg.value);
     }
     
+    /** Deposit wei into a taker's margin
+    * @param id the id of the subcontract to deposit into
+    * @notice the message value is directly deposited.
+    */
     function fundTakerMargin(bytes32 id)
         public
         payable
     {
         Subcontract storage k = subcontracts[id];
         require (k.isInitialized);
-        k.TakerMargin += msg.value;
+        k.TakerMargin= k.TakerMargin.add(msg.value);
     }
 
+    /** Set the initial day of all new subcontracts
+    * @param priceDay the index value of the current day of the oracle
+    */
     function firstPrice(uint8 priceDay)
         public
         onlyAdmin
@@ -217,12 +276,19 @@ contract Book {
             
             // simply record the price for updating
             // then move it to the rest of the list
+            if (k.Side)
+                totalLongMargin = totalLongMargin.add(k.ReqMargin);
+            else
+                totalShortMargin = totalShortMargin.add(k.ReqMargin);
             k.InitialDay = priceDay;
             k.isPending = false;
         }
         delete pendingContracts;
     }
     
+    /** internal function for applying changes to the book after an LP defaults
+    * @param cancelFeePercentage the cancelation fee
+    */
     function lpDefault(uint8 cancelFeePercentage)
         internal
     {
@@ -240,8 +306,8 @@ contract Book {
         delete pendingContracts;
         
         // cancel the rest
-        for (i = 0; i < longContracts.length; i++) {
-            bytes32 id = longContracts[i];
+        for (i = 0; i < shortTakerContracts.length; i++) {
+            bytes32 id = shortTakerContracts[i];
             k = subcontracts[id];
             k.isCancelled = true;
             uint toPay = Utils.maxSubtract(lpMargin, k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
@@ -249,8 +315,8 @@ contract Book {
             k.TakerMargin = k.TakerMargin.add(toPay);
         }
 
-        for (i = 0; i < shortContracts.length; i++) {
-            id = shortContracts[i];
+        for (i = 0; i < longTakerContracts.length; i++) {
+            id = longTakerContracts[i];
             k = subcontracts[id];
             k.isCancelled = true;
             toPay = Utils.maxSubtract(lpMargin, k.ReqMargin.mul(2 * cancelFeePercentage)/100); 
@@ -258,8 +324,15 @@ contract Book {
             k.TakerMargin = k.TakerMargin.add(toPay);
         }
     }
-    
-    function cancel(uint priceTime, bytes32 id, address sender, uint8 openFee, uint8 cancelFee)
+
+    /** Cancel a subcontract
+    * @param priceTime the last settle price timestamp
+    * @param id the subcontract id
+    * @param sender who sent the cancel to the AssetSwap contract
+    * @param openFee the cancel fee for cancelling an new subcontract
+    * @param cancelFee the cancel fee for cancelling a subcontract the rest of the time
+    */
+    function cancel(uint priceTime, bytes32 id, address sender, uint8 openFee, uint cancelFee)
         public
         payable
         onlyAdmin
@@ -273,20 +346,25 @@ contract Book {
 		} else {
 			if (priceTime > lastSettleTime) // settlement period
             {
-                require(sender != k.Taker, "Taker cannot cancel during settle"); // taker cannot cancel during settle
+                require(sender != k.Taker || lastSettleTime == 0, "Taker cannot cancel during settle"); // taker cannot cancel during settle
             }
             fee = (k.ReqMargin * cancelFee)/100;
 		}
 		require(msg.value >= fee, "Insufficient cancel fee");
 		if (sender == k.Taker)
-		    lpMargin = lpMargin.add(fee);
+		    //lpMargin = lpMargin.add(fee);
+            balanceSend(fee, assetSwap.admin());
 	    else if (sender == lp)
-	        k.TakerMargin = k.TakerMargin.add(fee);
+	        //k.TakerMargin = k.TakerMargin.add(fee);
+            balanceSend(fee, assetSwap.admin());
         //balances[sender] += (msg.value - fee);
         balanceSend(msg.value - fee, sender);
 	    k.isCancelled = true;
     }
 
+    /** Allow the OracleSwap admin to cancel any  subcontract
+    * @param id the subcontract to cancel
+    */
     function adminCancel(bytes32 id)
         public
         payable
@@ -295,7 +373,12 @@ contract Book {
         Subcontract storage k = subcontracts[id];
         k.isCancelled = true;
     }
-    
+
+    /** Burn a subcontract
+    * @param id the subcontract id
+    * @param sender who called the function in AssetSwap
+    * @param amount the message value
+    */
     function burn( bytes32 id, address sender, uint amount)
         public
         payable
@@ -316,12 +399,18 @@ contract Book {
         return burnFee;
     }
     
+    /** Allow a taker to withdraw margin
+    * @param id the subcontract id
+    * @param lastOracleSettlePrice the block timestamp of the last oracle settle price
+    * @param sender who sent this message to AssetSwap
+    * @notice reverts during settle period
+    */
     function takerWithdrawal(bytes32 id, uint amount, uint lastOracleSettlePrice, address sender)
         public
         onlyAdmin
     {
         Subcontract storage k = subcontracts[id];
-        require(lastOracleSettlePrice < k.lastSettleTime,
+        require(lastSettleTime == 0 || lastOracleSettlePrice < lastSettleTime,
             "Taker cannot withdraw during the settle period.");
 
         if (lpDefaulted)
@@ -337,44 +426,75 @@ contract Book {
         balanceSend(amount, sender);
     }
 
-    function pnlCalculation(uint leverage, int longReturn, uint reqMargin, bool makerSide)
-        internal
-        pure
-        returns(int makerPNL)
+    /** Settle the whole book
+    * @param takerLongRets the returns for a long contract for a taker each day of the week
+    * @param takerShortRets the returns for a short contract for a taker each day of the week
+    * @param longProfited if true, indicates that the long positiion had earnings
+    */
+    function settle(int[8] takerLongRets, int[8] takerShortRets, bool longProfited)
+        public
+        onlyAdmin
     {
-        int intMargin = int(reqMargin);
-
-        if (makerSide)
-            makerPNL = (intMargin/1e12 * int(leverage) * longReturn + (1 ether)/1e4)/(1 ether);
+        // todo timestamp 4 days
+        if (longProfited)
+        {
+            for (i = 0; i < shortTakerContracts.length; i++) {
+                settleSubcontract(shortTakerContracts[i], takerShortRets);
+            }
+            for (uint i = 0; i < longTakerContracts.length; i++) {
+                settleSubcontract(longTakerContracts[i], takerLongRets);
+            }  
+        }
         else
-            makerPNL = (intMargin/1e12 * int(leverage) * ((-1 * longReturn) + ((1 ether)/1e4)))/(1 ether);
+        {  
+            for (i = 0; i < longTakerContracts.length; i++) {
+                settleSubcontract(longTakerContracts[i], takerLongRets);
+            }
+            for (i = 0; i < shortTakerContracts.length; i++) {
+                settleSubcontract(shortTakerContracts[i], takerShortRets);
+            }
+        }
 
-        if (makerPNL > intMargin)
-            makerPNL = intMargin;
-        if (makerPNL < -1 * intMargin)
-            makerPNL = -1 * intMargin;
+        totalNewMargin = 0;
+        lastSettleTime = block.timestamp;
+        burnMargin = 0;
+
+        uint req = requiredMargin();
+        if (lpMargin < req)
+        {
+            lpDefaulted = true;
+            uint toSub = Utils.maxSubtract(lpMargin, req.mul(DEFAULT_FEE)/1000);
+            lpMargin = lpMargin - toSub;
+            balanceSend(toSub, assetSwap.admin());
+        }
     }
 
-    function settleSubcontract(bytes32 id, uint[8] leverages, int[8] longReturns)
+    /** Internal fn to settle an individual subcontract
+    * @param id the id of the subcontract
+    * @param takerRets the taker returns for a contract of that position for each day of the week
+    */
+    function settleSubcontract(bytes32 id, int[8] takerRets)
         internal
-        returns (bool deleted)
     {
         Subcontract storage k = subcontracts[id];
 
-        if (k.newSubcontract)
+        if (k.toDelete)
+        {
+            return;
+        }
+
+        if (k.isPending) // Skip over new contracts created after price initialization
         {
             if (k.Side)
                 totalLongMargin = totalLongMargin.add(k.ReqMargin);
             else
                 totalShortMargin = totalShortMargin.add(k.ReqMargin);
-            k.newSubcontract = false;
         } else {
-         
-            int makerPNL = pnlCalculation(leverages[k.InitialDay], longReturns[k.InitialDay], k.ReqMargin, k.Side);
+            int makerPNL = (-1 * takerRets[k.InitialDay]) * int(k.ReqMargin);
+            //makerPNL = 1 ether;
                 
-            uint toTake;
-
             uint absolutePNL;
+
             if (makerPNL > 0)
                 absolutePNL = uint(makerPNL);
             else
@@ -383,8 +503,9 @@ contract Book {
             // in the case the maker should profit
             if (makerPNL > 0)
             {
-                toTake = Utils.maxSubtract(k.TakerMargin, absolutePNL);
-                k.TakerMargin = k.TakerMargin.sub(toTake);
+                uint toTake = Utils.maxSubtract(k.TakerMargin, absolutePNL);
+                k.TakerMargin = k.TakerMargin.sub(toTake); // switch to .sub?
+                //k.TakerMargin = (9 ether);
 
                 // add to burn margin if taker burned or burn fees if maker burned
                 if (!k.isBurned)
@@ -411,10 +532,9 @@ contract Book {
             }
         }
         
-        // close if killed or cancelled, will refund everyone
+        // close if killed or cancelled, to be redeemed
         if (k.isBurned || k.isCancelled) {
-            deleteSubcontract(id);
-            return true;
+            markForDeletion(id);
         }
         
         // setup for next week
@@ -423,115 +543,70 @@ contract Book {
         {
             uint toSub = Utils.maxSubtract(k.TakerMargin, k.ReqMargin.mul(DEFAULT_FEE)/1000);
             k.TakerMargin = k.TakerMargin.sub(toSub);
-            balanceSend(amount, SwapMarket(admin).admin);
+            balanceSend(toSub, assetSwap.admin());
             emit TakerDefault(k.Taker, id);
-            deleteSubcontract(id);
-            return true;
-        }
-        return false;
-    }
-
-    function settle(uint[8] leverages, int[8] longReturns, bool longProfited)
-        public
-        onlyAdmin
-    {
-        // todo timestamp 4 days
-        if (longProfited)
-        {
-            for (uint i = 0; i < shortContracts.length; i++) {
-                if (settleSubcontract(shortContracts[i], leverages, longReturns))
-                    i--;
-            }   
-            for (i = 0; i < longContracts.length; i++) {
-                if (settleSubcontract(longContracts[i], leverages, longReturns))
-                    i--;
-            }
-        }
-        else
-        {  
-            for (i = 0; i < longContracts.length; i++) {
-                if (settleSubcontract(longContracts[i], leverages, longReturns))
-                    i--;
-            }
-            for (i = 0; i < shortContracts.length; i++) {
-                if (settleSubcontract(shortContracts[i], leverages, longReturns))
-                    i--;
-            }
-        }
-
-        totalNewMargin = 0;
-        lastSettleTime = block.timestamp;
-        burnMargin = 0;
-
-        uint req = requiredMargin();
-        if (lpMargin < req)
-        {
-            lpDefaulted = true;
-            uint toSub = Utils.maxSubtract(lpMargin, req.mul(DEFAULT_FEE)/1000);
-            lpMargin = lpMargin - toSub;
-            balanceSend(toSub, SwapMarket(admin).admin)
+            markForDeletion(id);
         }
     }
     
-    function lpMarginWithdrawal(uint amount)
+    /** Withdraw margn from the LP margin 
+    * @param amount the amount of margin to move
+    * @param lastOracleSettlePrice use to ensure it's not the settle period
+    * @notice reverts if during the settle period
+    */
+    function lpMarginWithdrawal(uint amount, uint lastOracleSettlePrice)
         public
         onlyAdmin
     {
+        require(lastSettleTime == 0 || lastOracleSettlePrice < lastSettleTime,
+            "Taker cannot withdraw during the settle period.");
         uint req = requiredMargin();
         require (lpMargin >= req.add(amount));
         lpMargin = lpMargin.sub(amount);
         balanceSend(amount, lp);
     }
 
-    function abandonedSelfDestruct(bytes32 id) // set the RM to zero
-        public
-    {
-        require (block.timestamp > lastSettleTime + (8 days));
-        require (lastSettleTime != 0); // set to 0 initially
-
-        deleteSubcontract(id);
-    }
-
-    function lpDefaultedRefund(bytes32 id)
-        public
-    {
-        require(lpDefaulted);
-        deleteSubcontract(id);
-    }
-
+    /** Refund the balances and remove from storage a subcontract that has been defaulted, cancelled,
+    * burned, or expired.
+    * @param id the id of the subcontract
+    */
     function redeemSubcontract(bytes32 id)
-    {
-
-    }
-
-    function balanceSend(uint amount, address reciever)
-        internal
-    {
-        AssetSwap swap = AssetSwap(admin);
-        swap.balanceTransfer.value(amount)(reciever);
-    }
-
-    function setMinimum(uint amount)
         public
         onlyAdmin
     {
-        takeMinimum = amount;
+        Subcontract storage k = subcontracts[id];
+        // Allow any subcontract to be redeemed if it hasn't been settled for the time period
+        if (block.timestamp < lastSettleTime + TIME_TO_SELF_DESTRUCT || lastSettleTime == 0)
+            require(k.toDelete || lpDefaulted, 'Subcontract is not eligible for deletion');
+        deleteSubcontract(id);
     }
 
+    /** Function to send balances back to the Assetswap contract
+    * @param amount the amount in wei to send
+    * @param recipient the address to credit the balance to
+    */
+    function balanceSend(uint amount, address recipient)
+        internal
+    {
+        assetSwap.balanceTransfer.value(amount)(recipient);
+    }
+
+    // DEBUG FUNCTION
     function returnLongLenth()
         public
         view
         returns (uint)
     {
-        return longContracts.length;
+        return longTakerContracts.length;
     }
 
+    // DEBUG FUNCTION
     function returnShortLength()
         public
         view
         returns (uint)
     {
-        return shortContracts.length;
+        return shortTakerContracts.length;
     }
 
 }
