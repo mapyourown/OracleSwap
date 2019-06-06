@@ -1,6 +1,6 @@
 pragma solidity ^0.4.0;
 
-import "./SwapMarket.sol";
+import "./AssetSwap.sol";
 
 contract SwapFactory {
 
@@ -18,7 +18,7 @@ contract SwapFactory {
 		returns(address _address) 
 	{
 		require (msg.sender == admin);
-		SwapMarket c = new SwapMarket(msg.sender, oracle, assetID);
+		AssetSwap c = new AssetSwap(msg.sender, oracle, assetID);
 		emit SwapCreated(address(c));
 		swapContracts.push(c);
 		return c;
