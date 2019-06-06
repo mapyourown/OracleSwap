@@ -535,6 +535,16 @@ contract AssetSwap {
 
     }
 
+    /** Change the address of the administrator
+    * @param newAdmin the new administrator address
+    */
+    function changeAdmin(address newAdmin) 
+        public 
+        onlyAdmin
+    {
+        admin = newAdmin;
+    }
+
     function checkLengthDEBUG(address maker)
         public
         view
