@@ -183,17 +183,24 @@ contract('Oracle', async (accounts) => {
 		);
 	});
 
-
-	it ("should let the oracle change its address, and nobody else", async function () {
-		await utils.timeTravel(60 * 60 * 24 * 5); // 5 days into the future
-		let newOracle = accounts[1]
+	it ("should let the oracle admin add another admin", async function () {
+		let newOracle = accounts[1];
 		await truffleAssert.reverts(
-			oracle.changeAdmin(newOracle, {from: accounts[1]})
+			oracle.addAdmin(newOracle, {from: newOracle})
 		);
-		let changeTx = await oracle.changeAdmin(newOracle, {from: accounts[0]});
-		let admin = await oracle.admin();
-		assert.equal(newOracle, admin);
-		let priceUpdateTx = await oracle.setSettlePrice(assetID, 2500000000, {from: newOracle});
-		dayCounter = 0;
+		let addTx = await oracle.addAdmin(newOracle, {from: admin});
+		let isAdmin = await oracle.admins(newOracle);
+		assert.equal(isAdmin, true);
+	});
+
+	it ("should let the new admin remove the first one", async function () {
+		let newOracle = accounts[1];
+		
+		let removeTx = await oracle.removeAdmin(admin, {from: newOracle});
+		let isAdmin = await oracle.admins(admin);
+		await truffleAssert.reverts(
+			oracle.addAdmin(accounts[3], {from: admin})
+		);
+		assert.equal(isAdmin, false);
 	});
 });

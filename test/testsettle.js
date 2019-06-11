@@ -30,7 +30,7 @@ contract ('AssetSwap', function (accounts) {
 	}
 
 	const NUM_MAKERS = 1;
-	const NUM_TAKERS = 50;
+	const NUM_TAKERS = 90;
 
 	var swap;
 	var factory;
@@ -53,13 +53,14 @@ contract ('AssetSwap', function (accounts) {
 
 	it ("Should find the oracle contract", async function () {
 		oracle = await Oracle.deployed();
-		let oracleAddress = await oracle.admin();
+		let isAdmin = await oracle.admins(admin);
+		assert.equal(isAdmin, true);
 		//console.log('o admin ', oracleAddress);
 		//console.log('script admin', admin);
 	});
 
-	it ("Should set up the first maker with 500 ETH OpenBalance", async function () {
-		let makeAmount = web3.toWei(500, 'ether'); // in range from 11 to 25 ETH
+	it ("Should set up the first maker with 900 ETH OpenBalance", async function () {
+		let makeAmount = web3.toWei(900, 'ether'); // in range from 11 to 25 ETH
 		let bookTx = await swap.createBook(10, {from: maker});
 		let makeTx = await swap.increaseOpenBalance({from: maker, value: makeAmount});
 	})
@@ -83,12 +84,12 @@ contract ('AssetSwap', function (accounts) {
 		}
 	});*/
 
-	it ("Should find see the oracle contract still", async function () {
-		await utils.timeTravel(60 * 60 * 24); // one day
-		let oracleAddress = await oracle.admin();
-		//console.log('o admin ', oracleAddress);
-		//console.log('script admin', admin);
-	});
+	it (`Should admin cancel the contracts`, async function () {
+		for (const [i, taker] of Object.entries(takers)) {
+			let cancelTx = swap.adminCancel(maker, ids[i], {from: admin});
+			await sleep(1000);
+		}
+	})
 
 	/*it ("Should update the oracle", async function () {
 		await utils.timeTravel(60 * 60 * 24); // one day
@@ -108,7 +109,6 @@ contract ('AssetSwap', function (accounts) {
 
 	it ("Should advance the oracle a week", async function () {
 		await utils.timeTravel(60 * 60 * 24); // one day
-		let oracleAddress = await oracle.admin();
 		await oracle.setIntraweekPrice(0, 200e6, false, {from: admin});
 		await oracle.setIntraweekPrice(1, 2800e6, false, {from: admin});
 		await utils.timeTravel(60 * 60 * 24 * 4); // 4 days into the future
@@ -125,23 +125,16 @@ contract ('AssetSwap', function (accounts) {
 
 	it ("Should settle the maker", async function () {
 		let lengths = await swap.checkLengthDEBUG(maker);
-		console.log(lengths);
+		//console.log(lengths);
 		let settleTx = await swap.settle(maker, {from: admin});
 		gasCosts(settleTx, `Settle with $(NUM_TAKERS) takers`);
-	});
-
-	it ("Should find see the oracle contract still", async function () {
-		await utils.timeTravel(60 * 60 * 24); // one day
-		let oracleAddress = await oracle.admin();
-		//console.log('o admin ', oracleAddress);
-		//console.log('script admin', admin);
 	});
 
 	it ("Should redeem a subcontract", async function () {
 		let info = await swap.getSubcontractData(maker, ids[0]);
 		let bookInfo = await swap.getBookData(maker);
-		console.log(bookInfo);
-		console.log(info);
+		//console.log(bookInfo);
+		//console.log(info);
 		let redeemtx = await swap.redeem(maker, ids[0], {from: maker});
 		gasCosts(redeemtx, "Redeeming one subcontract")
 	})
