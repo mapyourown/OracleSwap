@@ -24,7 +24,7 @@ library Utils {
 }
 
 contract Book {
-    // TODO: cap the number of subcontracts
+
     using SafeMath for uint;
        
     address constant public burnAddress = 0x0;
@@ -56,7 +56,7 @@ contract Book {
     uint public BOOK_TAKE_MIN;
     uint constant DEFAULT_FEE = 125; // in tenths of a percent
     uint constant TIME_TO_SELF_DESTRUCT = 8 days;
-    uint constant MAX_SUBCONTRACTS = 100;
+    uint constant MAX_SUBCONTRACTS = 300;
 
     
     modifier onlyAdmin()
@@ -82,6 +82,7 @@ contract Book {
 		bool isBurned;
 		bool makerBurned;
         bool toDelete;
+        bool isNewWednesday; // true if started between tuesday pm and wednesday first price
 	}
 
     /** Sets up a new Book for an LP.
@@ -97,6 +98,7 @@ contract Book {
         assetSwap = AssetSwap(admin);
         lp = user;
         BOOK_TAKE_MIN = minBalance.mul(1 ether);
+        lastSettleTime = block.timestamp;
     }
 	
     /** Internal function for removing a subcontract from storage.
@@ -281,7 +283,7 @@ contract Book {
             else
                 totalShortMargin = totalShortMargin.add(k.ReqMargin);
             k.InitialDay = priceDay;
-            k.isPending = false;
+
         }
         delete pendingContracts;
     }
@@ -353,10 +355,10 @@ contract Book {
 		require(msg.value >= fee, "Insufficient cancel fee");
 		if (sender == k.Taker)
 		    //lpMargin = lpMargin.add(fee);
-            balanceSend(fee, assetSwap.admin());
+            balanceSend(fee, assetSwap.feeAddress());
 	    else if (sender == lp)
 	        //k.TakerMargin = k.TakerMargin.add(fee);
-            balanceSend(fee, assetSwap.admin());
+            balanceSend(fee, assetSwap.feeAddress());
         //balances[sender] += (msg.value - fee);
         balanceSend(msg.value - fee, sender);
 	    k.isCancelled = true;
@@ -410,7 +412,7 @@ contract Book {
         onlyAdmin
     {
         Subcontract storage k = subcontracts[id];
-        require(lastSettleTime == 0 || lastOracleSettlePrice < lastSettleTime,
+        require(lastOracleSettlePrice < lastSettleTime,
             "Taker cannot withdraw during the settle period.");
 
         if (lpDefaulted)
@@ -465,7 +467,7 @@ contract Book {
             lpDefaulted = true;
             uint toSub = Utils.maxSubtract(lpMargin, req.mul(DEFAULT_FEE)/1000);
             lpMargin = lpMargin - toSub;
-            balanceSend(toSub, assetSwap.admin());
+            balanceSend(toSub, assetSwap.feeAddress());
         }
     }
 
@@ -478,12 +480,13 @@ contract Book {
     {
         Subcontract storage k = subcontracts[id];
 
-        if (k.toDelete)
+        if (k.toDelete || k.isNewWednesday)
         {
+            k.isNewWednesday = false;
             return;
         }
 
-        if (k.isPending) // Skip over new contracts created after price initialization
+        if (k.isPending) // Add contracts taken this week to margining requirements
         {
             if (k.Side)
                 totalLongMargin = totalLongMargin.add(k.ReqMargin);
@@ -543,7 +546,7 @@ contract Book {
         {
             uint toSub = Utils.maxSubtract(k.TakerMargin, k.ReqMargin.mul(DEFAULT_FEE)/1000);
             k.TakerMargin = k.TakerMargin.sub(toSub);
-            balanceSend(toSub, assetSwap.admin());
+            balanceSend(toSub, assetSwap.feeAddress());
             emit TakerDefault(k.Taker, id);
             markForDeletion(id);
         }
@@ -558,8 +561,8 @@ contract Book {
         public
         onlyAdmin
     {
-        require(lastSettleTime == 0 || lastOracleSettlePrice < lastSettleTime,
-            "Taker cannot withdraw during the settle period.");
+        require(lastOracleSettlePrice < lastSettleTime,
+            "LP cannot withdraw during the settle period.");
         uint req = requiredMargin();
         require (lpMargin >= req.add(amount));
         lpMargin = lpMargin.sub(amount);
@@ -576,7 +579,7 @@ contract Book {
     {
         Subcontract storage k = subcontracts[id];
         // Allow any subcontract to be redeemed if it hasn't been settled for the time period
-        if (block.timestamp < lastSettleTime + TIME_TO_SELF_DESTRUCT || lastSettleTime == 0)
+        if (block.timestamp < lastSettleTime + TIME_TO_SELF_DESTRUCT)
             require(k.toDelete || lpDefaulted, 'Subcontract is not eligible for deletion');
         deleteSubcontract(id);
     }

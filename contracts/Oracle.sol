@@ -10,10 +10,11 @@ contract Oracle {
         bool isFinalDay;
     }
     
-    address public admin;
     Asset[] public assets;
     uint[8][] private prices; // includes 6 decimal places, 12000000 = 12.000000
     uint[8][] public lastWeekPrices; // includes 6 decimal places, 120000000 = 12.000000
+
+    mapping(address => bool) public admins;
     mapping(address => bool) public readers;
 
     uint constant DAILY_PRICE_TIME_MIN = 18 hours;
@@ -22,7 +23,7 @@ contract Oracle {
     
     modifier onlyAdmin()
     {
-        require(msg.sender == admin);
+        require(admins[msg.sender]);
         _;
     }
     
@@ -58,7 +59,7 @@ contract Oracle {
     * @dev The message sender is assigned as the contract administrator
     */
     constructor (uint ethPrice) public {
-        admin = msg.sender;
+        admins[msg.sender] = true;
         addAsset("ETHUSD", ethPrice);
     }
 
@@ -72,7 +73,7 @@ contract Oracle {
         public
         returns (uint id)
     {
-        require (msg.sender == admin || msg.sender == address(this));
+        require (admins[msg.sender] || msg.sender == address(this));
 
         // Fill the asset struct
         Asset memory asset;
@@ -171,14 +172,26 @@ contract Oracle {
         emit PriceCorrected(assetID, asset.name, newPrice, block.timestamp);
     }
 
-    /** Change the address of the administrator
-    * @param newAdmin the new administrator address
+    /** Grant administrator priviledges to a user
+    * @param newAdmin the address to promote
     */
-    function changeAdmin(address newAdmin) 
-        public 
+    function addAdmin(address newAdmin)
+        public
         onlyAdmin
     {
-        admin = newAdmin;
+        admins[newAdmin] = true;
+    }
+
+    /** Remove administrator priviledges from a user
+    * @param toRemove the address to demote
+    * @notice you may not remove yourself
+    */
+    function removeAdmin(address toRemove)
+        public
+        onlyAdmin
+    {
+        require(toRemove != msg.sender, "You may not remove yourself as an admin.");
+        admins[toRemove] = false;
     }
 
     /** Grant an address permision to access private information about the assets
@@ -202,7 +215,7 @@ contract Oracle {
         view
         returns (uint[8] currentPrices)
     {
-        require (msg.sender == admin || readers[msg.sender],
+        require (admins[msg.sender] || readers[msg.sender],
             "Function caller is not approved to call this function.");
         currentPrices = prices[id];
     }
@@ -217,7 +230,7 @@ contract Oracle {
         view
         returns (uint price)
     {
-        require (msg.sender == admin || readers[msg.sender],
+        require (admins[msg.sender] || readers[msg.sender],
             "Function caller is not approved to call this function.");    
         price =  prices[id][assets[id].currentDay];
     }

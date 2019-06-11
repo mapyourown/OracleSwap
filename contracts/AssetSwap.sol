@@ -24,10 +24,9 @@ contract AssetSwap {
     int16 public nextTakerLongRate; // in tenths of a %
     int16 public nextTakerShortRate; // in tenths of a %
     uint16 public returnsLeverageRatio; // in hundredths
-    uint16 public leverageRatio;
-    uint16 public nextLeverageRatio;
+    uint16 public leverageRatio;    // in hundredths
+    uint16 public nextLeverageRatio; // in hundredths
     uint public maxOpenBalance;
-    address public admin;
 
     uint[4] public tierCutoffs;
     uint[4] public tierMinOpens;
@@ -43,6 +42,8 @@ contract AssetSwap {
     mapping(address => address) public books;
     mapping(address => uint) public openBalances;
     mapping(address => uint) public withdrawBalances;
+    mapping(address => bool) public admins;
+    address public feeAddress;
     
     uint public burnFees;
     bool public isPaused;
@@ -52,11 +53,12 @@ contract AssetSwap {
     event FirstPrice(address lp, uint8 startDay);
     event Burn(address lp, bytes32 id, address sender);
     event DEBUG(bytes32 str, uint result);
-    event RatesUpdated(int16 newLong, int16 newShort);
+    event RatesUpdated(int16 target, int16 basis);
     event LeverageRatioUpdated(uint newRatio);
     
-    modifier onlyAdmin() {
-        require (msg.sender == admin, "Only the admin can perform this action");
+    modifier onlyAdmin()
+    {
+        require(admins[msg.sender]);
         _;
     }
 
@@ -73,7 +75,7 @@ contract AssetSwap {
     constructor (address _admin, address priceOracle, uint assetID)
         public
     {
-        admin = _admin;
+        admins[_admin] = true;
         MAX_ORDER_LIMIT = 20;
         
         oracle = Oracle(priceOracle);
@@ -99,8 +101,8 @@ contract AssetSwap {
         // target between 0 and 1
         // basis between -2 and 2
         // Does not switch until next week
-        require(0 < target &&  target < 99, "Target must be between 0 and 1");
-        require(-199 < basis && basis < 199, "Basis must be between -2 and 2");
+        require(0 < target &&  target < 100, "Target must be between 0 and 1");
+        require(-200 < basis && basis < 200, "Basis must be between -2 and 2");
 
         nextTakerLongRate = target + basis;
         nextTakerShortRate = target - basis;
@@ -132,7 +134,7 @@ contract AssetSwap {
 
 
     /** Adjusts the future leverage ratio
-    * @param newRatio the new desired leverage ratio
+    * @param newRatio the new desired leverage ratio (2 decimals, eg. enter 250 for 2.5)
     * @dev the new leverage ratio goes into effect after computeReturns() is called
     */
     function setLeverageRatio(uint16 newRatio)
@@ -455,7 +457,7 @@ contract AssetSwap {
             if (assetPastPrice == 0 || ethPastPrice == 0)
                 continue;
 
-            int assetReturn = int((assetPastPrice * (1 ether)) / assetPrice) - 1 ether;
+            int assetReturn = int((assetPrice * (1 ether)) / assetPastPrice) - 1 ether;
             takerLongReturns[i] = assetReturn - int(takerLongRate) * (1 ether)/1e3;
             takerLongReturns[i] = (takerLongReturns[i] * int(returnsLeverageRatio * ethPastPrice))/int(ethPrice * 100);
             takerShortReturns[i] = (-1 * assetReturn) - int(takerShortRate) * (1 ether)/1e3;
@@ -535,14 +537,36 @@ contract AssetSwap {
 
     }
 
-    /** Change the address of the administrator
-    * @param newAdmin the new administrator address
+    /** Change the address that can withdraw the collected fees
+    * @param newAddress the new address to change to
     */
-    function changeAdmin(address newAdmin) 
-        public 
+    function changeFeeAddress(address newAddress)
+        public
         onlyAdmin
     {
-        admin = newAdmin;
+        feeAddress = newAddress;
+    }
+
+    /** Grant administrator priviledges to a user
+    * @param newAdmin the address to promote
+    */
+    function addAdmin(address newAdmin)
+        public
+        onlyAdmin
+    {
+        admins[newAdmin] = true;
+    }
+
+    /** Remove administrator priviledges from a user
+    * @param toRemove the address to demote
+    * @notice you may not remove yourself
+    */
+    function removeAdmin(address toRemove)
+        public
+        onlyAdmin
+    {
+        require(toRemove != msg.sender, "You may not remove yourself as an admin.");
+        admins[toRemove] = false;
     }
 
     function checkLengthDEBUG(address maker)
