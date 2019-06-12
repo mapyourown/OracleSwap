@@ -12,7 +12,7 @@ Node.js is required to run the server.
 
 1. Install Truffle and Ganache CLI. Alternately, download the graphical version of Ganache.
     ```javascript
-    npm install -g truffle
+    npm install -g truffle@4.1.15;
     npm install -g ganache-cli
     ```
 
