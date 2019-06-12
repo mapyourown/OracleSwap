@@ -53,7 +53,7 @@ contract Book {
 
     bool public lpDefaulted;
 
-    uint public BOOK_TAKE_MIN;
+    uint public minRM;
     uint constant DEFAULT_FEE = 125; // in tenths of a percent
     uint constant TIME_TO_SELF_DESTRUCT = 8 days;
     uint constant MAX_SUBCONTRACTS = 300;
@@ -97,7 +97,7 @@ contract Book {
     {
         assetSwap = AssetSwap(admin);
         lp = user;
-        BOOK_TAKE_MIN = minBalance.mul(1 ether);
+        minRM = minBalance.mul(1 ether);
         lastSettleTime = block.timestamp;
     }
 	
@@ -202,7 +202,7 @@ contract Book {
         onlyAdmin
         returns (bytes32 id)
     {
-        require(amount * 1 ether >= BOOK_TAKE_MIN);
+        require(amount * 1 ether >= minRM);
         require(numEntries < MAX_SUBCONTRACTS);
         uint RM = amount * 1 ether; 
         uint makerShare = msg.value.sub(RM);
@@ -567,6 +567,16 @@ contract Book {
         require (lpMargin >= req.add(amount));
         lpMargin = lpMargin.sub(amount);
         balanceSend(amount, lp);
+    }
+
+    /** Allow the LP to change the minimum take size in their book
+    * @param min the minimum take size in ETH for the book
+    */
+    function adjustMinRM(uint min)
+        public
+        onlyAdmin
+    {
+        minRM = min * 1 ether;
     }
 
     /** Refund the balances and remove from storage a subcontract that has been defaulted, cancelled,

@@ -18,6 +18,7 @@ contract AssetSwap {
     uint constant MIN_RM = 10 ether; // in wei
     uint constant CLOSE_FEE = 15; // in tenths of a %
     uint constant BURN_FEE = 250; // in tenths of a %
+    uint constant GLOBAL_MIN_RM = 10;
     uint16 public MAX_ORDER_LIMIT;
     int16 public takerLongRate; // in tenths of a %
     int16 public takerShortRate; // in tenths of a %
@@ -26,7 +27,6 @@ contract AssetSwap {
     uint16 public returnsLeverageRatio; // in hundredths
     uint16 public leverageRatio;    // in hundredths
     uint16 public nextLeverageRatio; // in hundredths
-    uint public maxOpenBalance;
 
     uint[4] public tierCutoffs;
     uint[4] public tierMinOpens;
@@ -35,12 +35,9 @@ contract AssetSwap {
     int[8] private takerLongReturns;
     int[8] private takerShortReturns;
     bool public longProfited;
-
-    uint[] public minRMs;
     
     //lp specific info
     mapping(address => address) public books;
-    mapping(address => uint) public openBalances;
     mapping(address => uint) public withdrawBalances;
     mapping(address => bool) public admins;
     address public feeAddress;
@@ -48,7 +45,6 @@ contract AssetSwap {
     uint public burnFees;
     bool public isPaused;
 
-    event OpenBalance(address indexed book, address lp, uint balance);
     event OrderTaken(address lp, address indexed taker, bytes32 id);
     event FirstPrice(address lp, uint8 startDay);
     event Burn(address lp, bytes32 id, address sender);
@@ -112,18 +108,6 @@ contract AssetSwap {
         emit RatesUpdated(target, basis);
     }
 
-    /** Adjust the maximum take sizes for each tier as well as the minimum open balance for that tier
-    * @param tiers a uint array of the maximum take size for the tier IN ETH
-    * @param minimums a unint array of each tier minimum open balance IN ETH
-    */
-    function setTiers(uint[4] tiers, uint[4] minimums)
-        public
-        onlyAdmin
-    {
-        tierCutoffs = tiers;
-        tierMinOpens = minimums;
-    }
-
     function adminCancel(address lp, bytes32 id)
         public
         onlyAdmin
@@ -155,52 +139,18 @@ contract AssetSwap {
         books[msg.sender] = new Book(msg.sender, this, min);
     }
 
-    /** Allows a user to add to their Open Balance as a liquidity provider
-    * @notice the user must add sufficient balance to meet the minimum for their min take tier
-    * @dev the message value is automatically added
+    /** Allow the LP to change the minimum take size in their book
+    * @param min the minimum take size in ETH for the book
     */
-    function increaseOpenBalance() 
+    function adjustMinRM(uint min)
         public
-        payable
     {
-        require (books[msg.sender] != 0x0, "Sender does not have a book");
-        Book b = Book(books[msg.sender]);
-        uint bookMin = b.BOOK_TAKE_MIN();
-        if (bookMin < tierCutoffs[0] * 1 ether)
-        {
-            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[0] * 1 ether,
-                "Must have make with sufficient open balance for the tier.");
-        } 
-        else if (bookMin < tierCutoffs[1] * 1 ether)
-        {
-            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[1] * 1 ether,
-                "Must have make with sufficient open balance for the tier.");
-        }
-        else if (bookMin < tierCutoffs[2] * 1 ether)
-        {
-            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[2] * 1 ether,
-                "Must have make with sufficient open balance for the tier.");
-        }
-        else if (bookMin < tierCutoffs[3] * 1 ether)
-        {
-            require(openBalances[msg.sender].add(msg.value) > tierMinOpens[3] * 1 ether,
-                "Must have make with sufficient open balance for the tier.");
-        }
-        openBalances[msg.sender] = openBalances[msg.sender].add(msg.value);
-        emit OpenBalance(books[msg.sender], msg.sender, openBalances[msg.sender]);
+        require (books[msg.sender] != 0x0, "User must have a book");
+        require (min > GLOBAL_MIN_RM)
+        Book b = new Book(books[msg.sender]);
+        b.adjustMinRM(min);
     }
 
-    /** Reduce the amount of ETH in the open balance of a user
-    * @param amount the amount in Wei to subtract
-    */
-    function reduceOpenBalance(uint amount) 
-        public
-    {
-        require (openBalances[msg.sender] >= amount, "User does not have enough Open Balance");
-        openBalances[msg.sender] = openBalances[msg.sender].sub(amount);
-        withdrawBalances[msg.sender] = withdrawBalances[msg.sender].add(amount);
-        emit OpenBalance(books[msg.sender], msg.sender, openBalances[msg.sender]);
-    }
 
     /** Take a new subcontract with an LP
     * @param lp the LP to take from
