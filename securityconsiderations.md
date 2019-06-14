@@ -28,9 +28,9 @@ Once a taker is no longer active the oracle will run a script to remove inactive
 
 Once a taker is no longer active the oracle will run a script to remove inactive subcontracts from the LP's book to free space, as this allows more takers and thus more oracle revenue. If the oracle is negligent, the list could grow too large to be processed due to the size of the LP’s ledger of cancelled subcontracts. Anyone can log into the LP book contract and delete canceled subcontracts from the LP's book using the deleteSubcontract() function, as there is no risk from this. 
 
-[check this!!] A DoS problem can also occur if a contract requires an external call to finish to progress to a new state, and this external call is corrupted. OracleSwap follows the withdrawal pattern whereby each user can can the withdraw function independently, and there are no external calls that could potentially freeze the contract. 
+More generally, a DoS problem can occur if a contract requires an external call to finish to progress to a new state, and this external call is corrupted or neglected. OracleSwap follows the withdrawal pattern whereby each user can can the withdraw function independently.
 
-In the worst-case scenario if the contract were stuck, all users can access their entire margins if settlement has not occurred for 9 days. 
+In the worst-case scenario where the contract was frozen or neglected by the Oracle, all users can access their entire margins if settlement has not occurred for 9 days.
 
 ### Timestamp Dependence
 
@@ -38,7 +38,7 @@ It is known that a miner may manipulate the block timestamp up to about 30 secon
 
 ### Front Running
 
-Some Ethereum contracts may have issues where block miners may manipulate the order in which transactions are executed within a block. This a typical problem for market contracts where an attacker might see a transaction for an order, and insert their transaction to be executed prior. However, the nature of OracleSwap makes this kind of attack irrelevant. Since forward starting prices are used to open and close a position there is no way for an attacker to profit by getting a transaction in before another taker (i.e., front running involves getting a position based on stale prices, not unknown future market prices). 
+Some Ethereum contracts may have issues where block miners may manipulate the order in which transactions are executed within a block. This a typical problem for market contracts where an attacker might see a transaction for an order, and insert their transaction to be executed prior. However, the nature of OracleSwap makes this kind of attack irrelevant. Since forward starting prices are used to open and close a position, pushing someone out of the way to steal their transaction, or to take an LP's offer when they wanted to retract it, would merely be annoying, not costly. 
 
 ### Entropy
 
@@ -102,7 +102,7 @@ The only attack surface comes from an evil oracle posting fraudulent prices to i
 
 Creating a mechanism that makes honesty the Oracle/admin's dominant strategy involves creating particular payoffs and options, which implies various constraints. Below are several constraints in the code that assist in creating good incentives.
 
-### Settlement can only occur 4 hours after the most recent Oracle update.
+### Settlement can only occur 4 hours after the most recent Oracle update
 This provides counterparties time to react if the Oracle reveals its evil nature. 
 
 ### Players cannot cancel between the Oracle Price Contract update and settlement, only burn or continue
@@ -110,21 +110,23 @@ If the Oracle posts obviously fraudulent prices, players can burn their PNL rath
 
 If they do not burn, the evil oracle will rationally infer, via common knowledge reasoning, he can cheat them again next period by more than 25% RM in expected value.  Most players will have significant excess margin to avoid having to interrupt their activities to avoid default, as for example at MakerDAO 85% of CDP account value is over-collateralized by more than 100%.  For investors with more than 25% RM in their margin after a fraudulent PNL is assessed to their margin, it will be cheaper to to burn their payoff and prevent the cheating oracle from receiving ETH as opposed to either continuing or defaulting.
 
-### Subcontract PNL is capped at the Required Margin (RM). 
+### Subcontract PNL is capped at the Required Margin (RM)
 
 Leverage is not merely convenient for users, but it minimizes the potential size of an Oracle exit scam payoff (those counterparties who, for some reason, might not burn their PNL when cheated). No matter how much ETH is in a player’s margin, or how large the notional is relative to the RM settlement can only transfer up to the RM regardless of asset price movement.
 
-### Settlement can only occur 5 days after the most recent settlement. 
+### Settlement can only occur 5 days after the most recent settlement
 
 This prevents a cheating Oracle/admin from sneaking a succession of settlements at some strange hour, effectively getting around the cap on PNL transfers. 
 
-### Oracle Contract price updates are prohibited between 0.5 and 18 hours after last update.
+### Oracle Contract price updates are prohibited between 0.5 and 18 hours after last update
 
 This allows correction to obvious mistakes, but prevents the Oracle from generating fraudulent prices in the middle of the night when no one is watching. 
 
-### Settlement can only occur 24 hours after the Oracle Price Contract is flagged for final day 
+### Settlement can only occur 22 hours after the Oracle Price Contract is flagged for final day 
 
-On Tuesday the Oracle's price update includes changing a variable such that the next Oracle Price Contract update is the one preceeeding settlement, i.e., the Wednesday prices will be used as closing prices in that week's PNL calculation. This prevents a cheating Oracle/admin from sneaking a settlement on fraudulent prices in on a day that no one is watching. If Wednesday is a holiday, settlement would occur on Tuesday, in which case the Monday Oracle Price contract will flag 'final day', but if Wednesday is not a holiday, any Oracle Price Contract update should only flag 'final day' on Tuesday at 4:15 PM. Given Oracle Price Contract updates cannot occur for 18 hours, this lets players know that if this flag has not been set, they do not have to worry that the Oracle would unexpectedly settle at the next Oracle Price Contract update, and so can safely ignore it for at least a day. This minimizes the amount of vigilance players need to monitor the Oracle.  
+On Tuesday the Oracle's price update includes changing a variable such that the next Oracle Price Contract update is the one preceeeding settlement, i.e., the Wednesday prices will be used as closing prices in that week's PNL calculation. Thus the Tuesday 4 PM to Wednesday 4 PM period will be that settlement's final day. This prevents a cheating Oracle/admin from sneaking a settlement on fraudulent prices in on a day that no one is watching. Given Oracle Price Contract updates cannot occur for 18 hours and settlement cannot occur for 4 hours after the next Oracle Price Contract update, players do not have to worry that the Oracle might unexpectedly settle after the next Oracle Price Contract update, and so can safely ignore it for at least a day. This minimizes the amount of vigilance players need to monitor the Oracle.  
+
+An evil oracle's best strategy is surprise, so if the Oracle posted fraudulent prices a day before settlement, this merely gives users more time to react, and when faced with an evil Oracle, burning is the optimal self-interested strategy for anyone with more than 25% of their RM in excess margin. Burning can occur at any time. 
 
 ### Oracle Prices are easily audited.
 
