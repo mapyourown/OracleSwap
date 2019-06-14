@@ -48,9 +48,9 @@ No uncertainty or random number generation is used for the OracleSwap suite. Thi
 
 This attack uses the fact that some contracts use this.balance to represent the amount of ether that shoud be in the contract. As selfdestruct () forces a contract to accept ETH, one can cause this condition not to hold, which can freeze funds OracleSwap does not reference this.balance. 
 
-### DelegateCall. 
+### DelegateCall
 
-In the second Parity Multisig Wallet attack ($150M) uninitialized libraries were accessed via a DelegateCall function, allowing the hacker to become the owner of a contract library. The hacker then called the kill() function, which froze the contract and all the ETH contained in it. OracleSwap does not use DelegateCall(), and the only external library it uses is Zepplin’s well-audited safemath. 
+In the second Parity Multisig Wallet attack ($150M) uninitialized libraries were accessed via a DelegateCall function, allowing the hacker to become the owner of a contract library. The hacker then called the kill() function, which froze the contract and all the ETH contained in it. OracleSwap does not use DelegateCall(), and the only external library it uses is OpenZepplin’s well-audited SafeMath. 
 
 ### Fallback functions
 
@@ -98,14 +98,14 @@ The oracle can cancel all existing subcontracts (say, if deprecating the contrac
 
 ## Contract Logic to Constrain an Evil Oracle/Admin
 
-The only attack surface comes from an evil oracle posting fraudulent prices to inflate the PNL of conspirator positions, presumably the evil oracle's sock-puppet accounts. The game theoretic analysis of OracleSwap's unique oracle/administrator is discussed in the OracleSwap White Paper and Technical Document. The bottom line is that at some level everything is vulnerable if the will, or intent, is not aligned with honest or cooperative actions. OracleSwap's Oracle can cheat, just as Infura or Bitcoin Core can cheat, but they are all constrained by their self-interest. Alignining incentives lowers transaction costs, which makes it easier to create contracts that people want to use. 
+The only attack surface comes from an evil oracle posting fraudulent prices to inflate the PNL of conspirator positions, presumably the evil oracle's sock-puppet accounts. The game theoretic analysis of OracleSwap's unique oracle/administrator is discussed in the OracleSwap White Paper and Technical Document. The bottom line is that at some level everything is vulnerable if the will, or intent, is not aligned with honest or cooperative actions. OracleSwap's Oracle can cheat, just as Infura or Bitcoin's miners can cheat, but they are all constrained by their self-interest. Alignining incentives lowers transaction costs, which makes it easier to create contracts that people want to use. 
 
 Creating a mechanism that makes honesty the Oracle/admin's dominant strategy involves creating particular payoffs and options, which implies various constraints. Below are several constraints in the code that assist in creating good incentives.
 
 ### Settlement can only occur 4 hours after the most recent Oracle update
 This provides counterparties time to react if the Oracle reveals its evil nature. 
 
-### Players cannot cancel between the Oracle Price Contract update and settlement, only burn or continue
+### Players cannot cancel between the Oracle Contract update and settlement, only burn or continue
 If the Oracle posts obviously fraudulent prices, players can burn their PNL rather than send to an obviously evil Oracle. Burn fees, and burnt PNL, are sent to a burn address (0xDEAD) to minimize conspiracy scenarios. Burning requires an extra cost to discourage griefing, but those who find themselves on the 'wrong side' of the evil Oracle's sock-puppet accounts will find it cheaper to burn rather than continue or default. This minimizes a potential Oracle exit scam payoff.  
 
 If they do not burn, the evil oracle will rationally infer, via common knowledge reasoning, he can cheat them again next period by more than 25% RM in expected value.  Most players will have significant excess margin to avoid having to interrupt their activities to avoid default, as for example at MakerDAO 85% of CDP account value is over-collateralized by more than 100%.  For investors with more than 25% RM in their margin after a fraudulent PNL is assessed to their margin, it will be cheaper to to burn their payoff and prevent the cheating oracle from receiving ETH as opposed to either continuing or defaulting.
@@ -122,13 +122,13 @@ This prevents a cheating Oracle/admin from sneaking a succession of settlements 
 
 This allows correction to obvious mistakes, but prevents the Oracle from generating fraudulent prices in the middle of the night when no one is watching. 
 
-### Settlement can only occur 22 hours after the Oracle Price Contract is flagged for final day 
+### Settlement can only occur 22 hours after the Oracle  Contract is flagged for final day 
 
-On Tuesday the Oracle's price update includes changing a variable such that the next Oracle Price Contract update is the one preceeeding settlement, i.e., the Wednesday prices will be used as closing prices in that week's PNL calculation. Thus the Tuesday 4 PM to Wednesday 4 PM period will be that settlement's final day. This prevents a cheating Oracle/admin from sneaking a settlement on fraudulent prices in on a day that no one is watching. Given Oracle Price Contract updates cannot occur for 18 hours and settlement cannot occur for 4 hours after the next Oracle Price Contract update, players do not have to worry that the Oracle might unexpectedly settle after the next Oracle Price Contract update, and so can safely ignore it for at least a day. This minimizes the amount of vigilance players need to monitor the Oracle.  
+On Tuesday the Oracle's price update includes changing a variable such that the next Oracle Contract update is the one preceeeding settlement, i.e., the Wednesday prices will be used as closing prices in that week's PNL calculation. Thus the Tuesday 4 PM to Wednesday 4 PM period will be that settlement's final day. This prevents a cheating Oracle/admin from sneaking a settlement on fraudulent prices in on a day that no one is watching. Given Oracle Contract updates cannot occur for 18 hours and settlement cannot occur for 4 hours after the next Oracle Contract update, players do not have to worry that the Oracle might unexpectedly settle after the next Oracle Contract update, and so can safely ignore it for at least a day. This minimizes the amount of vigilance players need to monitor the Oracle.  
 
-An evil oracle's best strategy is surprise, so if the Oracle posted fraudulent prices a day before settlement, this merely gives users more time to react, and when faced with an evil Oracle, burning is the optimal self-interested strategy for anyone with more than 25% of their RM in excess margin. Burning can occur at any time. 
+An evil oracle's best strategy is surprise, so if the evil oracle posted fraudulent prices a day before settlement, this merely gives users more time to react, and when faced with an evil oracle, burning is the optimal self-interested strategy for anyone with more than 25% of their RM in excess margin. Burning can occur at any time. 
 
 ### Oracle Prices are easily audited.
 
-Oracle Price updates generate event logs, and blockchain queries provided at OracleSwap.co allow one to easily see if a price is fraudulent. Contract logic restricts fraudulent activity to Oracle prices, so if these prices are honest, PNLs will be honest. Note that crypto prices are taken at 4 PM ET from Bitwise-approved exchanges. Unlike reputation systems that are difficult to monitor, a cheat is easy to observe, and as the Oracle has no plausible deniability, complete accountability. A single cheat should be fatal to all contracts the OracleSwap oracle services, like a trigger strategy in a repeated game. 
+Oracle Price updates generate event logs, and blockchain queries provided at OracleSwap.co allow one to easily see if a price is fraudulent. Contract logic restricts fraudulent activity to Oracle prices, so if these prices are honest, PNLs will be honest. Note that crypto prices are taken at 4 PM ET from Bitwise-approved exchanges. Unlike reputation systems that are difficult to monitor, a cheat is easy to observe, and as the Oracle has no plausible deniability, complete accountability. A single cheat should be fatal to all contracts the OracleSwap's oracle services, like a trigger strategy in a repeated game. 
 
