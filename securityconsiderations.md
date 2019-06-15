@@ -6,11 +6,11 @@ This suite of contracts emphasize simplicity to minimize attack surfaces. While 
 
 ### Re-Entrancy Attacks (e.g., DAO attack, $50MM)
 
-The contract has been written with the Checks-Effects-Interactions pattern to avoid reentry attacks. It also uses transfer() and not send() or call() to move ether off the contract. The only function that sends Ether outside the contract is the `withdrawBalance()` function which follows the recommended Withdrawal pattern. Any attempt to remove Ether from the contracts must go through this function. Further information about these common security patterns can be found [here](https://solidity.readthedocs.io/en/latest/common-patterns.html).
+The contract has been written with the Checks-Effects-Interactions pattern to avoid reentry attacks. It also uses `transfer` and not `send` or `call` to move ether off the contract. The only function that sends Ether outside the contract is the `withdrawBalance` function which follows the recommended Withdrawal pattern. Any attempt to remove Ether from the contracts must go through this function. Further information about these common security patterns can be found [here](https://solidity.readthedocs.io/en/latest/common-patterns.html).
 
 ### Sending and Receiving Ether
 
-As mentioned in the Re-Entrancy section, the only way ether is sent out of the smart contracts are through the `withdrawBalance()` function in the SwapMarket contract. This follows the general security advice of favoring pulling rather than pushing. This function uses Solidity's `transfer` function which is considered the safest way to send Ether to an unknown contract. Furthermore, none of the OracleSwap contracts have a fallback function. The contracts have been compiled and deployed with a newer version of Solidity so that any Ether sent without a function call will be rejected.
+As mentioned in the Re-Entrancy section, the only way ether is sent out of the smart contracts are through the `withdrawBalance` function in the SwapMarket contract. This follows the general security advice of favoring pulling rather than pushing. This function uses Solidity's `transfer` function which is considered the safest way to send Ether to an unknown contract. Furthermore, none of the OracleSwap contracts have a fallback function. The contracts have been compiled and deployed with a newer version of Solidity so that any Ether sent without a function call will be rejected.
 
 ### Integer Overflow
 
@@ -24,7 +24,7 @@ Because there is a finite gas limit that can be spent within a single block, it 
 
 For any liquidity provider the contract settles all its active subcontracts at once. This involves a loop over the entirety of the liquidity provider's book. If the size of the book grows too large, it is possible for the gas cost of the settle computation to exceed the block gas limit.  To mitigate this issue, a liquidity provider's number of active subcontracts is capped. The approximate gas cost of settling each subcontract is known, and the limit was chosen to keep settlement of the entire book well under the gas limit. The settlement function is the only such necessary loop in the entire smart contract structure. OracleSwap can accommodate a nearly endless number of liquidity providers because each provider is treated on an individual basis, and at no time are all providers considered in a single function.
 
-Once a taker is no longer active the oracle will run a script to remove inactive subcontracts from the LP's book to free space, as this allows more takers and thus more oracle revenue. If the oracle is negligent, the list could grow too large to be processed due to the size of the LP’s ledger of cancelled subcontracts. Anyone can access the function to delete canceled subcontracts from the LP's book using the deleteSubcontract() function, as there is no risk from this.
+Once a taker is no longer active the oracle will run a script to remove inactive subcontracts from the LP's book to free space, as this allows more takers and thus more oracle revenue. If the oracle is negligent, the list could grow too large to be processed due to the size of the LP’s ledger of cancelled subcontracts. Anyone can access the function to delete canceled subcontracts from the LP's book using the `deleteSubcontract` function, as there is no risk from this.
 
 A DoS problem can also occur if a contract requires an external call to finish to progress to a new state, and this external call is corrupted or neglected. OracleSwap does not have an external calls outside the contract. 
 
@@ -44,11 +44,11 @@ No uncertainty or random number generation is used for the OracleSwap suite. Thi
 
 ### Unexpected Ether
 
-This attack uses the fact that some contracts use this.balance to represent the amount of ether that shoud be in the contract. As selfdestruct () forces a contract to accept ETH, one can cause this condition not to hold, which can freeze funds OracleSwap does not reference this.balance. 
+This attack uses the fact that some contracts use this.balance to represent the amount of ether that shoud be in the contract. As `selfdestruct` forces a contract to accept ETH, one can cause this condition not to hold, which can freeze funds OracleSwap does not reference this.balance. 
 
 ### DelegateCall
 
-In the second Parity Multisig Wallet attack ($150M) uninitialized libraries were accessed via a `delegatecall` function, allowing the hacker to become the owner of a contract library. The hacker then called the kill() function, which froze the contract and all the ETH contained in it. OracleSwap does not use `delegatecall`, and the only external library it uses is OpenZepplin’s well-audited SafeMath. 
+In the second Parity Multisig Wallet attack ($150M) uninitialized libraries were accessed via a `delegatecall` function, allowing the hacker to become the owner of a contract library. The hacker then called the `kill` function, which froze the contract and all the ETH contained in it. OracleSwap does not use `delegatecall`, and the only external library it uses is OpenZepplin’s well-audited SafeMath. 
 
 ### Fallback functions
 
@@ -68,7 +68,7 @@ Some contracts concatenate inputs to save gas, so a short address or parameter t
 
 ### Unchecked call return values
 
-When call() or send() are used to send ether they return a boolean indicating if the call succeeded or failed, but they do not revert if these functions fail, rather, they simply return false. This can cause the contract to think it sent ether when it did not, which can then allow other contract users to access this unspent ether. OracleSwap uses transfer(), never call() or send(). 
+When `call` or `send` are used to send ether they return a boolean indicating if the call succeeded or failed, but they do not revert if these functions fail, rather, they simply return false. This can cause the contract to think it sent ether when it did not, which can then allow other contract users to access this unspent ether. OracleSwap uses `transfer`, never `call` or `send`. 
 
 ### Constructor Misnaming
 
@@ -96,7 +96,7 @@ The oracle can cancel all existing subcontracts (say, if deprecating the contrac
 
 ## Contract Logic to Constrain an Evil Oracle/Admin
 
-The only attack surface comes from an evil oracle posting fraudulent prices to inflate the PNL of conspirator positions, presumably the evil oracle's sock-puppet accounts. The game theoretic analysis of OracleSwap's unique oracle/administrator is discussed in the OracleSwap White Paper and Technical Document, but the bottom line is that at some level everything is vulnerable if the economics, or incentives, do not align honesty with profit-maximization. OracleSwap's Oracle can cheat just as Infura or Bitcoin's miners can cheat, but they are all constrained by their self-interest. Alignining incentives lowers transaction costs, which makes it easier to create contracts that people want to use. 
+The only attack surface comes from an evil oracle posting fraudulent prices to inflate the PNL of conspirator positions, presumably the evil oracle's sock-puppet accounts. The game theoretic analysis of OracleSwap's unique oracle/administrator is discussed in the OracleSwap White Paper and Technical Document, but the bottom line is that everything is vulnerable if the economics, or incentives, do not align honesty with profit-maximization at every level. OracleSwap's Oracle can cheat just as Infura or Bitcoin's miners can cheat, but they are all constrained by their self-interest. Alignining incentives lowers transaction costs, which makes it easier to create contracts that people want to use. 
 
 Creating a mechanism that makes honesty the Oracle/admin's dominant strategy involves designing particular payoffs and options, which implies various constraints. Below are several constraints in the code that assist in creating good incentives.
 
