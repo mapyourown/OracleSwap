@@ -24,11 +24,9 @@ Because there is a finite gas limit that can be spent within a single block, it 
 
 For any liquidity provider the contract settles all its active subcontracts at once. This involves a loop over the entirety of the liquidity provider's book. If the size of the book grows too large, it is possible for the gas cost of the settle computation to exceed the block gas limit.  To mitigate this issue, a liquidity provider's number of active subcontracts is capped. The approximate gas cost of settling each subcontract is known, and the limit was chosen to keep settlement of the entire book well under the gas limit. The settlement function is the only such necessary loop in the entire smart contract structure. OracleSwap can accommodate a nearly endless number of liquidity providers because each provider is treated on an individual basis, and at no time are all providers considered in a single function.
 
-Once a taker is no longer active the oracle will run a script to remove inactive subcontracts from the LP's book to free space, as this allows more takers and thus more oracle revenue. However, if negligent, anyone can log into the LP book contract and delete canceled subcontracts from the LP's book, as there is no risk from this.
+Once a taker is no longer active the oracle will run a script to remove inactive subcontracts from the LP's book to free space, as this allows more takers and thus more oracle revenue. If the oracle is negligent, the list could grow too large to be processed due to the size of the LP’s ledger of cancelled subcontracts. Anyone can access the function to delete canceled subcontracts from the LP's book using the deleteSubcontract() function, as there is no risk from this.
 
-Once a taker is no longer active the oracle will run a script to remove inactive subcontracts from the LP's book to free space, as this allows more takers and thus more oracle revenue. If the oracle is negligent, the list could grow too large to be processed due to the size of the LP’s ledger of cancelled subcontracts. Anyone can log into the LP book contract and delete canceled subcontracts from the LP's book using the deleteSubcontract() function, as there is no risk from this. 
-
-More generally, a DoS problem can occur if a contract requires an external call to finish to progress to a new state, and this external call is corrupted or neglected. OracleSwap follows the withdrawal pattern whereby each user can can the withdraw function independently.
+A DoS problem can also occur if a contract requires an external call to finish to progress to a new state, and this external call is corrupted or neglected. OracleSwap does not have an external calls outside the contract. 
 
 In the worst-case scenario where the contract was frozen or neglected by the Oracle, all users can access their entire margins if settlement has not occurred for 9 days.
 
@@ -50,7 +48,7 @@ This attack uses the fact that some contracts use this.balance to represent the 
 
 ### DelegateCall
 
-In the second Parity Multisig Wallet attack ($150M) uninitialized libraries were accessed via a DelegateCall function, allowing the hacker to become the owner of a contract library. The hacker then called the kill() function, which froze the contract and all the ETH contained in it. OracleSwap does not use DelegateCall(), and the only external library it uses is OpenZepplin’s well-audited SafeMath. 
+In the second Parity Multisig Wallet attack ($150M) uninitialized libraries were accessed via a `delegatecall` function, allowing the hacker to become the owner of a contract library. The hacker then called the kill() function, which froze the contract and all the ETH contained in it. OracleSwap does not use `delegatecall`, and the only external library it uses is OpenZepplin’s well-audited SafeMath. 
 
 ### Fallback functions
 
@@ -72,9 +70,9 @@ Some contracts concatenate inputs to save gas, so a short address or parameter t
 
 When call() or send() are used to send ether they return a boolean indicating if the call succeeded or failed, but they do not revert if these functions fail, rather, they simply return false. This can cause the contract to think it sent ether when it did not, which can then allow other contract users to access this unspent ether. OracleSwap uses transfer(), never call() or send(). 
 
-### Constructors with Care
+### Constructor Misnaming
 
-If a constructor does not match name of contract it will behave like a function, leading to unexpected consequences. This error involves a constructor not matching the contract name. This is not possible after v0.4.22, and OracleSwap uses Solidity v0.4.26. OracleSwap also has constructor names that match the contract name. 
+If a constructor does not match name of contract it will behave like a function, leading to unexpected consequences. This error involves a constructor not matching the contract name. This is not possible after v0.4.22, and OracleSwap uses Solidity v0.4.25. OracleSwap also has constructor names that match the contract name. 
 
 ### Floating point and precision errors
 
@@ -86,7 +84,7 @@ Contracts that authorize users using the tx.origin variable are susceptible to p
 
 ### Public Visibility
 
-The public visibility of functions, where an outsider can see and access a function can allow hackers to manipulate the contract, such as in the first Parity attack ($31M) where a hacker reset the ownership of these contracts and then drained ether. In OracleSwap players cannot change their account addresses, and anyone accessing a public function can only withdraw ETH from balances tied to their address via a mapping.
+The public visibility of functions, where an outsider can see and access a function can allow hackers to manipulate the contract, such as in the first Parity attack ($31M) where a hacker reset the ownership of these contracts and then drained their ether. All access to public functions in OracleSwap involving state changes to an active subcontract or user data is restricted by address.
 
 ### Other General Code Considerations
 
@@ -98,9 +96,9 @@ The oracle can cancel all existing subcontracts (say, if deprecating the contrac
 
 ## Contract Logic to Constrain an Evil Oracle/Admin
 
-The only attack surface comes from an evil oracle posting fraudulent prices to inflate the PNL of conspirator positions, presumably the evil oracle's sock-puppet accounts. The game theoretic analysis of OracleSwap's unique oracle/administrator is discussed in the OracleSwap White Paper and Technical Document. The bottom line is that at some level everything is vulnerable if the will, or intent, is not aligned with honest or cooperative actions. OracleSwap's Oracle can cheat, just as Infura or Bitcoin's miners can cheat, but they are all constrained by their self-interest. Alignining incentives lowers transaction costs, which makes it easier to create contracts that people want to use. 
+The only attack surface comes from an evil oracle posting fraudulent prices to inflate the PNL of conspirator positions, presumably the evil oracle's sock-puppet accounts. The game theoretic analysis of OracleSwap's unique oracle/administrator is discussed in the OracleSwap White Paper and Technical Document, but the bottom line is that at some level everything is vulnerable if the economics, or incentives, do not align honesty with profit-maximization. OracleSwap's Oracle can cheat just as Infura or Bitcoin's miners can cheat, but they are all constrained by their self-interest. Alignining incentives lowers transaction costs, which makes it easier to create contracts that people want to use. 
 
-Creating a mechanism that makes honesty the Oracle/admin's dominant strategy involves creating particular payoffs and options, which implies various constraints. Below are several constraints in the code that assist in creating good incentives.
+Creating a mechanism that makes honesty the Oracle/admin's dominant strategy involves designing particular payoffs and options, which implies various constraints. Below are several constraints in the code that assist in creating good incentives.
 
 ### Settlement can only occur 4 hours after the most recent Oracle update
 This provides counterparties time to react if the Oracle reveals its evil nature. 
