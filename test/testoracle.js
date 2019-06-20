@@ -203,4 +203,10 @@ contract('Oracle', async (accounts) => {
 		);
 		assert.equal(isAdmin, false);
 	});
+
+	it ("should get price", async function () {
+		let prices = await oracle.getCurrentPrice(assetID, {from: accounts[1]})
+		console.log(prices)
+	});
+
 });

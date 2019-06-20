@@ -62,7 +62,7 @@ contract ('AssetSwap', function (accounts) {
 	it ("Should set up the first maker with 900 ETH OpenBalance", async function () {
 		let makeAmount = web3.toWei(900, 'ether'); // in range from 11 to 25 ETH
 		let bookTx = await swap.createBook(10, {from: maker});
-		let makeTx = await swap.increaseOpenBalance({from: maker, value: makeAmount});
+		let makeTx = await swap.lpFund(maker, {from: maker, value: makeAmount});
 	})
 
 	it (`Should set up ${NUM_TAKERS} takers`, async function () {
