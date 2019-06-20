@@ -391,7 +391,7 @@ contract AssetSwap {
     {
 
         // at least 3 days between returns
-        require(lastComputeReturnsTime < 3 days);
+        require(block.timestamp > lastComputeReturnsTime + 3 days);
 
         uint assetPrice  = oracle.getCurrentPrice(ASSET_ID);
         uint ethPrice = oracle.getCurrentPrice(0);
