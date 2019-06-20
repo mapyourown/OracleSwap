@@ -534,12 +534,6 @@ contract Book {
         onlyAdmin
     {
         Subcontract storage k = subcontracts[id];
-        if (k.TakerMargin != 0)
-        {
-            uint amount = k.TakerMargin;
-            k.TakerMargin = 0;
-            balanceSend(amount, k.Taker);       
-        }
         // Allow any subcontract to be redeemed if it hasn't been settled for the time period
         if (block.timestamp < lastBookSettleTime + TIME_TO_SELF_DESTRUCT)
             require(k.toDelete || lpDefaulted, "Subcontract is not eligible for deletion");
