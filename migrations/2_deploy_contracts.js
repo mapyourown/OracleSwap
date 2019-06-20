@@ -8,17 +8,17 @@ module.exports = function(deployer, network, accounts) {
 		var admin = accounts[0]
 		console.log(admin)
 		deployer.then(function () { // ETH
-			return deployer.deploy(Oracle, 242510000, {from: admin});
+			return deployer.deploy(Oracle, 257050000, {from: admin});
 		}).then(function(instance) {
 			oracle = instance;
 			// SPX
-			return oracle.addAsset('0x535058555344', 2850960000, {from: admin}); 
+			return oracle.addAsset('0x535058555344', 2879840000, {from: admin}); 
 		}).then(function () {
 			//BTC
-			return oracle.addAsset('0x425443555344', 8214290000, {from: admin});
+			return oracle.addAsset('0x425443555344', 8164930000, {from: admin});
 		}).then(function () {
 			//ETH/BTC
-			return oracle.addAsset('0x4554482f425443', 29523, {from: admin});
+			return oracle.addAsset('0x4554482f425443', 31482, {from: admin});
 		})
 	} else if (network == "development")
 	{
@@ -48,25 +48,25 @@ module.exports = function(deployer, network, accounts) {
 			return deployer.deploy(SwapFactory);
 		}).then(function (instance) {
 			factory = instance;
-			return factory.newSwapMarket(oracle.address, 0);
+			return factory.newSwapMarket(oracle.address, 0, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			ethswap = instance;
 			console.log("ETH Swap Market: " + ethswap.address);
-			return factory.newSwapMarket(oracle.address, 1);
+			return factory.newSwapMarket(oracle.address, 1, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance){
 			spxswap = instance;
 			console.log("SPX Swap Market: " + spxswap.address);
-			return factory.newSwapMarket(oracle.address, 2);
+			return factory.newSwapMarket(oracle.address, 2, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			btcswap = instance;
 			console.log("BTC Swap Market: " + btcswap.address);
-			return factory.newSwapMarket(oracle.address, 3);
+			return factory.newSwapMarket(oracle.address, 3, true);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {

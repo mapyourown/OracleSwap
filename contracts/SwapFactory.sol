@@ -13,12 +13,12 @@ contract SwapFactory {
 		admin = msg.sender;
 	}
 
-	function newSwapMarket(address oracle, uint assetID) 
+	function newSwapMarket(address oracle, uint assetID, bool isCrypto) 
 		public 
 		returns(address _address) 
 	{
 		require (msg.sender == admin);
-		AssetSwap c = new AssetSwap(msg.sender, oracle, assetID);
+		AssetSwap c = new AssetSwap(msg.sender, oracle, assetID, isCrypto);
 		emit SwapCreated(address(c));
 		swapContracts.push(c);
 		return c;
