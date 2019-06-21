@@ -53,7 +53,7 @@ contract Book {
     uint public totalShortMargin;   // total RM of all subks where lp is short
     uint public totalNewLongs;
     uint public totalNewShorts;
-    uint public lpRequiredMargin;
+    uint public lpRequiredMargin;   // ajusted by take, reset at settle
     uint public takeMinimum;
     
     uint public numContracts;
@@ -126,6 +126,14 @@ contract Book {
 		
         uint tMargin = k.TakerMargin;
         k.TakerMargin = 0;
+
+        if (!k.toDelete) // if k was marked for deletion, (deleted because of LP default or timout)
+        {
+            if (k.MakerSide)
+                totalLongMargin = totalLongMargin.sub(k.ReqMargin);
+            else
+                totalShortMargin = totalShortMargin.sub(k.ReqMargin);
+        }
         
         balanceSend(tMargin, k.Taker);
 
@@ -214,13 +222,13 @@ contract Book {
         numContracts++;
 
         if (takerSide)
-        {
+        {           // Case 1: taker is long, make is short
             order.index = longTakerContracts.length;
             longTakerContracts.push(id);
             totalShortMargin = totalShortMargin.add(RM);
             if (totalShortMargin - totalLongMargin > lpRequiredMargin)
                 lpRequiredMargin = totalShortMargin - totalLongMargin;
-        } else {
+        } else {    // Case 2: taker is short, maker is long
             order.index = shortTakerContracts.length;
             shortTakerContracts.push(id);
             totalLongMargin = totalLongMargin.add(RM);
@@ -230,12 +238,6 @@ contract Book {
         
         subcontracts[id] = order;
         pendingContracts.push(id);
-
-
-        if (takerSide)
-        {
-            order.index = longTakerContracts.length;
-        }
         
         require (lpMargin > lpRequiredMargin, "Something went wrong, this take should not be allowed");
 
@@ -277,9 +279,7 @@ contract Book {
         uint length = pendingContracts.length;
         for (uint32 i = 0; i < length; i++) {
             Subcontract storage k = subcontracts[pendingContracts[i]];
-            
             k.InitialDay = priceDay;
-
         }
         delete pendingContracts;
     }
@@ -404,12 +404,13 @@ contract Book {
 
         totalNewLongs = 0;
         totalNewShorts = 0;
+        lastBookSettleTime = block.timestamp;
+        burnMargin = 0;
+
         if (totalLongMargin > totalShortMargin)
             lpRequiredMargin = totalLongMargin - totalShortMargin;
         else
             lpRequiredMargin = totalShortMargin - totalLongMargin;
-        lastBookSettleTime = block.timestamp;
-        burnMargin = 0;
 
         if (lpMargin < lpRequiredMargin)
         {
@@ -441,7 +442,7 @@ contract Book {
         }
 
 
-        int makerPNL = ((-1 * takerRets[k.InitialDay]) * int(k.ReqMargin))/(1 ether);
+        int makerPNL = (-1 * takerRets[k.InitialDay]) * int(k.ReqMargin / 1 ether);
             
         uint absolutePNL;
         if (makerPNL > 0)
@@ -505,12 +506,16 @@ contract Book {
         public
         onlyAdmin
     {
-        require(lastOracleSettleTime < lastBookSettleTime,
-            "LP cannot withdraw during the settle period.");
-        if (lpDefaulted)
+        if (lpDefaulted || reachedSelfDestructTime())
+        {
             require (lpMargin >= amount);
+        }
         else
+        {
             require (lpMargin >= lpRequiredMargin.add(amount));
+            require(lastOracleSettleTime < lastBookSettleTime,
+                "LP cannot withdraw during the settle period.");
+        }
         lpMargin = lpMargin.sub(amount);
         balanceSend(amount, lp);
     }
@@ -534,9 +539,8 @@ contract Book {
         onlyAdmin
     {
         Subcontract storage k = subcontracts[id];
-        // Allow any subcontract to be redeemed if it hasn't been settled for the time period
-        if (block.timestamp < lastBookSettleTime + TIME_TO_SELF_DESTRUCT)
-            require(k.toDelete || lpDefaulted, "Subcontract is not eligible for deletion");
+        require(k.toDelete || lpDefaulted || reachedSelfDestructTime(),
+            "Subcontract is not eligible for deletion");
         deleteSubcontract(id);
     }
 
@@ -548,6 +552,17 @@ contract Book {
         internal
     {
         assetSwap.balanceTransfer.value(amount)(recipient);
+    }
+
+    /** Will check and see if we reached the self destruct time
+    * @return true if contract has passed self destruct time
+    */
+    function reachedSelfDestructTime()
+        public
+        view
+        returns (bool)
+    {
+        return block.timestamp > lastBookSettleTime + TIME_TO_SELF_DESTRUCT;
     }
 
     // DEBUG FUNCTION

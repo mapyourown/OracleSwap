@@ -16,9 +16,8 @@ contract AssetSwap {
 
     bool public isPaused;
     
-    uint constant MIN_RM = 10 ether; // in wei
     uint constant CLOSE_FEE = 150; // in hundredths of a %
-    uint constant GLOBAL_MIN_RM = 10;
+    uint constant GLOBAL_MIN_RM = 10; // in ETH
 
     int16 public takerLongRate; // in hundredths of a %
     int16 public takerShortRate; // in hundredths of a %
@@ -28,9 +27,9 @@ contract AssetSwap {
     uint16 public leverageRatio;    // the LR * 100
     uint16 public nextLeverageRatio; // the LR * 100
 
-    // For computing profit
-    int[8] private takerLongReturns;
-    int[8] private takerShortReturns;
+    // For computing profit (TODO BACK TO PRIVATE)
+    int[8] public takerLongReturns;
+    int[8] public takerShortReturns;
     uint public lastComputeReturnsTime;
     bool public longProfited;
     
@@ -65,7 +64,12 @@ contract AssetSwap {
     * @param priceOracle the address of the Oracle contract
     * @param assetID the id of the asset according to the Oracle contract
     */
-    constructor (address _admin, address priceOracle, uint assetID, bool _isCryptoSettled)
+    constructor (
+        address _admin,
+        address priceOracle,
+        uint assetID,
+        uint16 _leverageRatio,
+        bool _isCryptoSettled)
         public
     {
         admins[_admin] = true;
@@ -73,6 +77,8 @@ contract AssetSwap {
         oracle = Oracle(priceOracle);
         ASSET_ID = assetID;
         isCryptoSetted = _isCryptoSettled;
+        leverageRatio = _leverageRatio;
+        nextLeverageRatio = _leverageRatio;
 
     }
 
@@ -129,6 +135,7 @@ contract AssetSwap {
         returns (address newBook)
     {
         require (books[msg.sender] == 0x0, "User must not have a preexisting book");
+        require (min >= GLOBAL_MIN_RM, "Must meet the minimum");
         books[msg.sender] = new Book(msg.sender, this, min);
         return books[msg.sender];
     }
@@ -140,7 +147,7 @@ contract AssetSwap {
         public
     {
         require (books[msg.sender] != 0x0, "User must have a book");
-        require (min > GLOBAL_MIN_RM);
+        require (min >= GLOBAL_MIN_RM, "Must meet the minimum");
         Book b = Book(books[msg.sender]);
         b.adjustMinRM(min);
     }
@@ -157,7 +164,7 @@ contract AssetSwap {
         pausable
     {
         require(msg.value >= amount * (1 ether), "Insuffient ETH for this RM"); // allow only whole number amounts
-        require(msg.value >= MIN_RM, "RM must be larger than the minimum");
+        require(amount >= GLOBAL_MIN_RM, "RM must be larger than the minimum");
         Book book = Book(books[lp]);
         uint lpLong = book.totalLongMargin();
         uint lpShort = book.totalShortMargin();
@@ -410,7 +417,7 @@ contract AssetSwap {
             takerLongReturns[i] = assetReturn - ((1 ether) * int(takerLongRate))/1e4;
             takerShortReturns[i] = (-1 * assetReturn) - ((1 ether) * int(takerShortRate))/1e4;
             if (isCryptoSetted)
-            {   // 
+            {   
                 takerLongReturns[i] = (takerLongReturns[i] * int(returnsLeverageRatio * assetPastPrice))/int(assetPrice * 100);
                 takerShortReturns[i] = (takerShortReturns[i] * int(returnsLeverageRatio * assetPastPrice))/int(assetPrice * 100);
             }

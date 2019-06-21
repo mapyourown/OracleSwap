@@ -1,7 +1,6 @@
 var AssetSwap = artifacts.require("./AssetSwap.sol");
 var SwapFactory = artifacts.require("./SwapFactory.sol")
 var Oracle = artifacts.require("./Oracle.sol")
-var DataTest = artifacts.require("./DataTest.sol")
 
 module.exports = function(deployer, network, accounts) {
 	if (network == "testlive") {
@@ -48,25 +47,25 @@ module.exports = function(deployer, network, accounts) {
 			return deployer.deploy(SwapFactory);
 		}).then(function (instance) {
 			factory = instance;
-			return factory.newSwapMarket(oracle.address, 0, false);
+			return factory.newSwapMarket(oracle.address, 0, 200, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			ethswap = instance;
 			console.log("ETH Swap Market: " + ethswap.address);
-			return factory.newSwapMarket(oracle.address, 1, false);
+			return factory.newSwapMarket(oracle.address, 1, 1000, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance){
 			spxswap = instance;
 			console.log("SPX Swap Market: " + spxswap.address);
-			return factory.newSwapMarket(oracle.address, 2, false);
+			return factory.newSwapMarket(oracle.address, 2, 250, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			btcswap = instance;
 			console.log("BTC Swap Market: " + btcswap.address);
-			return factory.newSwapMarket(oracle.address, 3, true);
+			return factory.newSwapMarket(oracle.address, 3, 250, true);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
@@ -80,26 +79,8 @@ module.exports = function(deployer, network, accounts) {
 		}).then(function (result) {
 			return oracle.addReader(ethbtcswap.address);
 		}).then(function () {
-			return deployer.deploy(DataTest)
-		}).then(function () {
 			console.log('Finished deployment');
 		});
-	} else if (network == "ropsten")
-	{
-	  var admin = accounts[0]
-		deployer.then(function () {
-			return deployer.deploy(MultiOracle, 200000000, 4, 1000000, {from: admin});
-		}).then(function(instance) {
-			oracle = instance;
-			// SPX
-			return oracle.addAsset('0x535058555344', 2000000000, 2, 15000000, false, {from: admin}); 
-		}).then(function () {
-			//BTC
-			return oracle.addAsset('0x425443555344', 6500000000, 3, 2000000, false, {from: admin});
-		}).then(function () {
-			//ETH/BTC
-			return oracle.addAsset('0x4554482f425443', 30000000, 4, 1500000, true, {from: admin});
-		})
 	}
 };
 

@@ -39,6 +39,7 @@ contract ('AssetSwap', function (accounts) {
 	const maker = accounts[1];
 	var used_accounts = 2;
 	var takers = accounts.slice(used_accounts, NUM_TAKERS + used_accounts);
+	console.log(takers)
 	used_accounts += takers.length;
 	var ids = new Array(takers.length)
 
@@ -60,9 +61,11 @@ contract ('AssetSwap', function (accounts) {
 	});
 
 	it ("Should set up the first maker with 900 ETH OpenBalance", async function () {
-		let makeAmount = web3.toWei(900, 'ether'); // in range from 11 to 25 ETH
+		let makeAmount = web3.toWei(2000, 'ether'); // in range from 11 to 25 ETH
 		let bookTx = await swap.createBook(10, {from: maker});
 		let makeTx = await swap.lpFund(maker, {from: maker, value: makeAmount});
+		let bookData = await swap.getBookData(maker);
+		assert.equal(bookData[1].toNumber(), makeAmount)
 	})
 
 	it (`Should set up ${NUM_TAKERS} takers`, async function () {
@@ -86,7 +89,7 @@ contract ('AssetSwap', function (accounts) {
 
 	it (`Should admin cancel the contracts`, async function () {
 		for (const [i, taker] of Object.entries(takers)) {
-			let cancelTx = swap.adminCancel(maker, ids[i], {from: admin});
+			let cancelTx = await swap.adminCancel(maker, ids[i], {from: admin});
 			await sleep(1000);
 		}
 	})
