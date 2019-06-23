@@ -18,7 +18,7 @@ contract Oracle {
     mapping(address => bool) public readers;
 
     uint constant DAILY_PRICE_TIME_MIN = 18 hours;
-    uint constant WEEKLY_PRICE_TIME_MIN = 4 days;
+    uint constant WEEKLY_PRICE_TIME_MIN = 5 days;
     uint constant EDIT_PRICE_TIME_MAX = 30 minutes;
     
     modifier onlyAdmin()
@@ -233,5 +233,41 @@ contract Oracle {
         require (admins[msg.sender] || readers[msg.sender],
             "Function caller is not approved to call this function.");    
         price =  prices[id][assets[id].currentDay];
+    }
+
+    /** Get the timestamp of the last price update time
+    * @param id the asset id of the desired asset
+    * @return timestamp the price update timestamp
+    */
+    function getLastUpdateTime(uint id)
+        public
+        view
+        returns (uint timestamp)
+    {
+        timestamp = assets[id].lastPriceUpdateTime;
+    }
+
+    /** Show if the current day is the final price update before settle
+    * @param id the asset id of the desired asset
+    * @return true if it is the final day, false otherwise
+    */
+    function isFinalDay(uint id)
+        public
+        view
+        returns (bool)
+    {
+        return assets[id].isFinalDay;
+    }
+
+    /** Show if the last price update was a settle price update
+    * @param id the asset id of the desired asset
+    * @return true if the last update was a settle, false otherwise
+    */
+    function isSettleDay(uint id)
+        public
+        view
+        returns (bool)
+    {
+        return (assets[id].currentDay == 0);
     }
 }
