@@ -247,6 +247,18 @@ contract Oracle {
         timestamp = assets[id].lastPriceUpdateTime;
     }
 
+    /** Get the timestamp of the last settle update time
+    * @param id the asset id of the desired asset
+    * @return timestamp the settle timestamp
+    */
+    function getLastSettleTime(uint id)
+        public
+        view
+        returns (uint timestamp)
+    {
+        timestamp = assets[id].lastSettlePriceTime;
+    }
+
     /** Show if the current day is the final price update before settle
     * @param id the asset id of the desired asset
     * @return true if it is the final day, false otherwise
