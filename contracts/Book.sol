@@ -3,38 +3,6 @@ pragma solidity ^0.4.25;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "./AssetSwap.sol";
 
-library Utils {
-    using SafeMath for uint;
-    
-    /** Utility function to find out the largest between two unsigned values
-    * @notice returns the first if they are equal
-    */
-    function max(uint a, uint b)
-        internal
-        pure
-        returns (uint maximum)
-    {
-        if (a >= b)
-            maximum = a;
-        else
-            maximum = b; 
-    }
-
-    /** utility function to find the minimum of two unsigned values
-    * @notice returns the first parameter if they are equal
-    */
-    function min(uint a, uint b)
-        internal
-        pure
-        returns (uint minimum)
-    {
-        if (a <= b)
-            minimum = a;
-        else
-            minimum = b;
-    }
-}
-
 contract Book {
 
     using SafeMath for uint;
@@ -57,12 +25,11 @@ contract Book {
     uint public takeMinimum;
     
     uint public numContracts;
-    bytes32[] public pendingContracts;
-    bytes32[] public shortTakerContracts; //where lp is long
-    bytes32[] public longTakerContracts; // where lp is short
+    bytes32[] public pendingContracts;    // for subcontracts awaiting price initialization
+    bytes32[] public shortTakerContracts; // where lp is long
+    bytes32[] public longTakerContracts;  // where lp is short
     
     mapping(bytes32 => Subcontract) public subcontracts;
-    mapping(bytes32 => uint) public indexes;
 
     uint public minRM; // in wei
 
@@ -126,23 +93,18 @@ contract Book {
 		
         uint tMargin = k.TakerMargin;
         k.TakerMargin = 0;
-
-        if (!k.toDelete) // if k was marked for deletion, (deleted because of LP default or timout)
-        {
-            if (k.MakerSide)
-                totalLongMargin = totalLongMargin.sub(k.ReqMargin);
-            else
-                totalShortMargin = totalShortMargin.sub(k.ReqMargin);
-        }
-        
         balanceSend(tMargin, k.Taker);
-
+        
         // implicitly delete by swapping with last element and shortening
-        uint index = indexes[id];
+        uint index = k.index;
         if (k.MakerSide) {
+            Subcontract storage lastShort = subcontracts[shortTakerContracts[shortTakerContracts.length - 1]];
+            lastShort.index = index;
             shortTakerContracts[index] = shortTakerContracts[shortTakerContracts.length - 1];
             shortTakerContracts.length--;
         } else {
+            Subcontract storage lastLong = subcontracts[longTakerContracts[longTakerContracts.length - 1]];
+            lastLong.index = index;
             longTakerContracts[index] = longTakerContracts[longTakerContracts.length - 1];
             longTakerContracts.length--;
         }
@@ -415,7 +377,7 @@ contract Book {
         if (lpMargin < lpRequiredMargin)
         {
             lpDefaulted = true;
-            uint toSub = Utils.min(lpMargin, lpRequiredMargin.mul(DEFAULT_FEE)/1e4);
+            uint toSub = min(lpMargin, lpRequiredMargin.mul(DEFAULT_FEE)/1e4);
             lpMargin = lpMargin - toSub;
             balanceSend(toSub, assetSwap.feeAddress());
         }
@@ -430,7 +392,7 @@ contract Book {
     {
         Subcontract storage k = subcontracts[id];
 
-        //Don't settle terminated contracts
+        // Don't settle terminated contracts
         if (k.toDelete)
             return;
 
@@ -441,9 +403,8 @@ contract Book {
             return;
         }
 
-
         int makerPNL = (-1 * takerRets[k.InitialDay]) * int(k.ReqMargin / 1 ether);
-            
+        
         uint absolutePNL;
         if (makerPNL > 0)
             absolutePNL = uint(makerPNL);
@@ -453,7 +414,7 @@ contract Book {
         // in the case the maker should profit
         if (makerPNL > 0)
         {
-            uint toTake = Utils.min(k.TakerMargin, absolutePNL);
+            uint toTake = min(k.TakerMargin, absolutePNL);
             k.TakerMargin = k.TakerMargin.sub(toTake);
 
             // add to burn margin if taker burned or burn fees if maker burned
@@ -467,8 +428,8 @@ contract Book {
         else // in the case the taker should profit
         {
             // Take from the burn margin if possible
-            uint burnMarginTake = Utils.min(burnMargin, absolutePNL);
-            uint lpMarginTake = Utils.min(lpMargin, (absolutePNL - burnMarginTake));
+            uint burnMarginTake = min(burnMargin, absolutePNL);
+            uint lpMarginTake = min(lpMargin, (absolutePNL - burnMarginTake));
             lpMargin = lpMargin.sub(lpMarginTake);
             burnMargin = burnMargin.sub(burnMarginTake);
             if (!k.isBurned)
@@ -485,15 +446,17 @@ contract Book {
             markForDeletion(id);
         }
         
-        // setup for next week
         // this is the case the taker defaulted
         if (k.TakerMargin < k.ReqMargin)
         {
-            uint toSub = Utils.min(k.TakerMargin, k.ReqMargin.mul(DEFAULT_FEE)/1e4);
+            uint toSub = min(k.TakerMargin, k.ReqMargin.mul(DEFAULT_FEE)/1e4);
             k.TakerMargin = k.TakerMargin.sub(toSub);
             balanceSend(toSub, assetSwap.feeAddress());
             emit TakerDefault(k.Taker, id);
             markForDeletion(id);
+        } else {
+            k.isNewContract = false;
+            k.InitialDay = 0;
         }
     }
     
@@ -508,11 +471,13 @@ contract Book {
     {
         if (lpDefaulted || reachedSelfDestructTime())
         {
-            require (lpMargin >= amount);
+            require (lpMargin >= amount,
+                "Attempting to withdraw more than the margin");
         }
         else
         {
-            require (lpMargin >= lpRequiredMargin.add(amount));
+            require (lpMargin >= lpRequiredMargin.add(amount),
+                "Attempting to withdraw more than the allowed amount");
             require(lastOracleSettleTime < lastBookSettleTime,
                 "LP cannot withdraw during the settle period.");
         }
@@ -565,21 +530,17 @@ contract Book {
         return block.timestamp > lastBookSettleTime + TIME_TO_SELF_DESTRUCT;
     }
 
-    // DEBUG FUNCTION
-    function returnLongLenth()
-        public
-        view
-        returns (uint)
+    /** Utility function to find the minimum of two unsigned values
+    * @notice returns the first parameter if they are equal
+    */
+    function min(uint a, uint b)
+        internal
+        pure
+        returns (uint minimum)
     {
-        return longTakerContracts.length;
-    }
-
-    // DEBUG FUNCTION
-    function returnShortLength()
-        public
-        view
-        returns (uint)
-    {
-        return shortTakerContracts.length;
+        if (a <= b)
+            minimum = a;
+        else
+            minimum = b;
     }
 }

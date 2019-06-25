@@ -10,26 +10,20 @@ contract AssetSwap {
     
     Oracle public oracle;
     
-    // Asset info
     uint public ASSET_ID;
     bool public isCryptoSetted;
-
-    bool public isPaused;
     
     uint constant CLOSE_FEE = 150; // in hundredths of a %
     uint constant GLOBAL_MIN_RM = 10; // in ETH
 
     int16 public takerLongRate; // in hundredths of a %
     int16 public takerShortRate; // in hundredths of a %
-    int16 public nextTakerLongRate; // in hundredths of a %
-    int16 public nextTakerShortRate; // in hundredths of a %
     uint16 public returnsLeverageRatio; // the LR * 100
     uint16 public leverageRatio;    // the LR * 100
-    uint16 public nextLeverageRatio; // the LR * 100
 
-    // For computing profit (TODO BACK TO PRIVATE)
-    int[8] public takerLongReturns;
-    int[8] public takerShortReturns;
+    // For computing profit
+    int[8] private takerLongReturns;
+    int[8] private takerShortReturns;
     uint public lastComputeReturnsTime;
     bool public longProfited;
     
@@ -37,14 +31,13 @@ contract AssetSwap {
     mapping(address => uint) public withdrawBalances;
     mapping(address => bool) public admins;
     address public feeAddress;
-    uint public burnFees;
     address public constant BURN_ADDRESS = 0xdead;
-    
+    uint public burnFees;
+    bool public isPaused; 
 
     event OrderTaken(address lp, address indexed taker, bytes32 id);
     event FirstPrice(address lp, uint8 startDay);
     event Burn(address lp, bytes32 id, address sender);
-    event DEBUG(bytes32 str, uint result);
     event RatesUpdated(int16 target, int16 basis);
     event LeverageRatioUpdated(uint newRatio);
     
@@ -77,9 +70,8 @@ contract AssetSwap {
         oracle = Oracle(priceOracle);
         ASSET_ID = assetID;
         isCryptoSetted = _isCryptoSettled;
-        leverageRatio = _leverageRatio;
-        nextLeverageRatio = _leverageRatio;
 
+        leverageRatio = _leverageRatio;
     }
 
     /** Adjust the Long and Short rates for all contracts
@@ -98,10 +90,10 @@ contract AssetSwap {
         require(0 < target &&  target < 100, "Target must be between 0 and 1%");
         require(-200 < basis && basis < 200, "Basis must be between -2 and 2%");
 
-        nextTakerLongRate = target + basis;
-        nextTakerShortRate = target - basis;
+        takerLongRate = target + basis;
+        takerShortRate = target - basis;
 
-        require(0 < nextTakerLongRate + nextTakerShortRate, "Long + Short must be > 0"); 
+        require(0 < takerLongRate + takerShortRate, "Long + Short must be > 0"); 
         
         emit RatesUpdated(target, basis);
     }
@@ -112,19 +104,6 @@ contract AssetSwap {
     {
         Book b = Book(books[lp]);
         b.adminCancel(id);
-    }
-
-
-    /** Adjusts the future leverage ratio
-    * @param newRatio the new desired leverage ratio (2 decimals, eg. enter 250 for 2.5)
-    * @dev the new leverage ratio goes into effect after computeReturns() is called
-    */
-    function setLeverageRatio(uint16 newRatio)
-        public 
-        onlyAdmin
-    {
-        nextLeverageRatio = newRatio;
-        emit LeverageRatioUpdated(newRatio);
     }
 
     /** Allow the LP to create a new book
@@ -168,21 +147,6 @@ contract AssetSwap {
         Book book = Book(books[lp]);
         uint lpLong = book.totalLongMargin();
         uint lpShort = book.totalShortMargin();
-
-        /*
-    
-        Max Long:
-            If {Short-Long+(AM-RM)/2>0}
-            MaxLong= Short-Long+(AM-RM)/2
-            Else
-            MaxLong= 0
-            Max Short:
-            If {Long-Short +(AM-RM)/2>0}
-            MaxShort= Long-Short +(AM-RM)/2
-            Else
-            MaxShort= 0
-        */
-
         uint freeMargin = 0;
         uint lpRM = book.lpRequiredMargin();
 
@@ -227,8 +191,7 @@ contract AssetSwap {
         payable
     {
         Book b = Book(books[lp]);
-        uint lastSettleTime;
-        (, , lastSettleTime, ,) = oracle.assets(ASSET_ID);
+        uint lastSettleTime = oracle.getLastSettleTime(ASSET_ID);
         b.cancel.value(msg.value)(lastSettleTime, id, msg.sender, CLOSE_FEE);
     }
 
@@ -268,8 +231,7 @@ contract AssetSwap {
         require(books[lp] != 0x0);
         
         Book b = Book(books[lp]);
-        uint lastOracleSettleTime;
-        (, ,lastOracleSettleTime, , ) = oracle.assets(ASSET_ID);
+        uint lastOracleSettleTime = oracle.getLastSettleTime(ASSET_ID);
 
         // will revert if during settle period
         b.takerWithdrawal(id, amount, lastOracleSettleTime, msg.sender);
@@ -284,8 +246,7 @@ contract AssetSwap {
         require(books[msg.sender] != 0x0);
         
         Book b = Book(books[msg.sender]);
-        uint lastOracleSettleTime;
-        (, ,lastOracleSettleTime, , ) = oracle.assets(ASSET_ID);
+        uint lastOracleSettleTime= oracle.getLastSettleTime(ASSET_ID);
 
         // Will revert if during settle period
         b.lpMarginWithdrawal(amount, lastOracleSettleTime);
@@ -397,8 +358,8 @@ contract AssetSwap {
         onlyAdmin
     {
 
-        // at least 3 days between returns
-        require(block.timestamp > lastComputeReturnsTime + 3 days);
+        // only compute returns after settle price posted
+        require(oracle.isSettleDay(ASSET_ID));
 
         uint assetPrice  = oracle.getCurrentPrice(ASSET_ID);
         uint ethPrice = oracle.getCurrentPrice(0);
@@ -418,22 +379,17 @@ contract AssetSwap {
             takerShortReturns[i] = (-1 * assetReturn) - ((1 ether) * int(takerShortRate))/1e4;
             if (isCryptoSetted)
             {   
-                takerLongReturns[i] = (takerLongReturns[i] * int(returnsLeverageRatio * assetPastPrice))/int(assetPrice * 100);
-                takerShortReturns[i] = (takerShortReturns[i] * int(returnsLeverageRatio * assetPastPrice))/int(assetPrice * 100);
+                takerLongReturns[i] = (takerLongReturns[i] * int(leverageRatio * assetPastPrice))/int(assetPrice * 100);
+                takerShortReturns[i] = (takerShortReturns[i] * int(leverageRatio * assetPastPrice))/int(assetPrice * 100);
             }
             else
             {
-                takerLongReturns[i] = (takerLongReturns[i] * int(returnsLeverageRatio * ethPastPrice))/int(ethPrice * 100);
-                takerShortReturns[i] = (takerShortReturns[i] * int(returnsLeverageRatio * ethPastPrice))/int(ethPrice * 100);
+                takerLongReturns[i] = (takerLongReturns[i] * int(leverageRatio * ethPastPrice))/int(ethPrice * 100);
+                takerShortReturns[i] = (takerShortReturns[i] * int(leverageRatio * ethPastPrice))/int(ethPrice * 100);
             }
         }
         
         longProfited = (assetPrice > oracle.lastWeekPrices(ASSET_ID, 0));
-
-        returnsLeverageRatio = leverageRatio;
-        leverageRatio = nextLeverageRatio;
-        takerLongRate = nextTakerLongRate;
-        takerShortRate = nextTakerShortRate;
         lastComputeReturnsTime = block.timestamp;
     }
     
@@ -448,12 +404,11 @@ contract AssetSwap {
         Book b = Book(books[lp]);
 
         // Can't be settled if returns haven't been computed yet
-        uint lastAssetSettleTime;
-        (, , lastAssetSettleTime, , ) = oracle.assets(ASSET_ID);
-        require(lastComputeReturnsTime > lastAssetSettleTime);
+        uint lastUpdateTime = oracle.getLastUpdateTime(ASSET_ID);
+        require(lastComputeReturnsTime > lastUpdateTime);
+        require(oracle.isSettleDay(ASSET_ID));
         
         b.settle(takerLongReturns, takerShortReturns, longProfited);
-        
     }
 
     /** Prevent new subcontracts from being created while contract is paused
@@ -531,16 +486,5 @@ contract AssetSwap {
     {
         require(toRemove != msg.sender, "You may not remove yourself as an admin.");
         admins[toRemove] = false;
-    }
-
-    function checkLengthDEBUG(address maker)
-        public
-        view
-        returns (uint long, uint short)
-    {
-        require(books[maker] != 0x0);
-        Book b = Book(books[maker]);
-        long = b.returnLongLenth();
-        short = b.returnShortLength();
     }
 }
