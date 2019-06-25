@@ -19,8 +19,6 @@ contract Book {
     uint public burnMargin;
     uint public totalLongMargin;    // total RM of all subks where lp is long
     uint public totalShortMargin;   // total RM of all subks where lp is short
-    uint public totalNewLongs;
-    uint public totalNewShorts;
     uint public lpRequiredMargin;   // ajusted by take, reset at settle
     uint public takeMinimum;
     
@@ -63,6 +61,7 @@ contract Book {
 		bool isBurned;
 		bool makerBurned;
         bool toDelete;
+        bool takerCloseDiscount;
 	}
 
     /** Sets up a new Book for an LP.
@@ -144,7 +143,7 @@ contract Book {
         public
         view
         returns (uint takerMargin, uint reqMargin, uint8 initialDay,
-          bool side, bool isCancelled, bool isBurned, bool toDelete)
+          bool side, bool isCancelled, bool isBurned, bool toDelete, bool takerDiscount)
     {
         Subcontract storage k = subcontracts[id];
         takerMargin = k.TakerMargin;
@@ -154,6 +153,7 @@ contract Book {
         isCancelled = k.isCancelled;
         isBurned = k.isBurned;
         toDelete = k.toDelete;
+        takerDiscount = k.takerCloseDiscount;
     }
 
     /** Create a new subcontract of the given parameters
@@ -190,12 +190,16 @@ contract Book {
             totalShortMargin = totalShortMargin.add(RM);
             if (totalShortMargin - totalLongMargin > lpRequiredMargin)
                 lpRequiredMargin = totalShortMargin - totalLongMargin;
+            else 
+                order.takerCloseDiscount = true;
         } else {    // Case 2: taker is short, maker is long
             order.index = shortTakerContracts.length;
             shortTakerContracts.push(id);
             totalLongMargin = totalLongMargin.add(RM);
             if (totalLongMargin - totalShortMargin > lpRequiredMargin)
                 lpRequiredMargin = totalLongMargin - totalShortMargin;
+            else
+                order.takerCloseDiscount = true;
         }
         
         subcontracts[id] = order;
@@ -262,15 +266,16 @@ contract Book {
         require(!k.isCancelled, "Subcontract is already cancelled");
 		require (oraclePriceTime < lastBookSettleTime, "Players may not cancel during the settle period");
 
-        uint fee = (k.ReqMargin * cancelFee)/1e4;
+        uint fee;
+        if (sender == k.Taker && k.takerCloseDiscount)
+            fee =(k.ReqMargin * cancelFee)/3e4;
+        else
+            fee = (k.ReqMargin * cancelFee)/1e4;
 		require(msg.value >= fee, "Insufficient cancel fee");
 
         k.isCancelled = true;
 
-		if (sender == k.Taker)
-            balanceSend(fee, assetSwap.feeAddress());
-	    else if (sender == lp)
-            balanceSend(fee, assetSwap.feeAddress());
+        balanceSend(fee, assetSwap.feeAddress());
         balanceSend(msg.value - fee, sender);
     }
 
@@ -364,8 +369,6 @@ contract Book {
             }
         }
 
-        totalNewLongs = 0;
-        totalNewShorts = 0;
         lastBookSettleTime = block.timestamp;
         burnMargin = 0;
 
@@ -444,6 +447,7 @@ contract Book {
         // close if killed or cancelled, to be redeemed by user
         if (k.isBurned || k.isCancelled) {
             markForDeletion(id);
+            return;
         }
         
         // this is the case the taker defaulted

@@ -11,14 +11,13 @@ contract AssetSwap {
     Oracle public oracle;
     
     uint public ASSET_ID;
-    bool public isCryptoSetted;
+    bool public isETHDenominated;
     
     uint constant CLOSE_FEE = 150; // in hundredths of a %
     uint constant GLOBAL_MIN_RM = 10; // in ETH
 
     int16 public takerLongRate; // in hundredths of a %
     int16 public takerShortRate; // in hundredths of a %
-    uint16 public returnsLeverageRatio; // the LR * 100
     uint16 public leverageRatio;    // the LR * 100
 
     // For computing profit
@@ -39,7 +38,6 @@ contract AssetSwap {
     event FirstPrice(address lp, uint8 startDay);
     event Burn(address lp, bytes32 id, address sender);
     event RatesUpdated(int16 target, int16 basis);
-    event LeverageRatioUpdated(uint newRatio);
     
     modifier onlyAdmin()
     {
@@ -56,20 +54,22 @@ contract AssetSwap {
     * @param _admin the address of the soon-to-be administrator
     * @param priceOracle the address of the Oracle contract
     * @param assetID the id of the asset according to the Oracle contract
+    * @param _leverageRatio the leverage ratio associated with the asset
+    * @param _isETHDenominated determines the asset currency used for returns
     */
     constructor (
         address _admin,
         address priceOracle,
         uint assetID,
         uint16 _leverageRatio,
-        bool _isCryptoSettled)
+        bool _isETHDenominated)
         public
     {
         admins[_admin] = true;
         
         oracle = Oracle(priceOracle);
         ASSET_ID = assetID;
-        isCryptoSetted = _isCryptoSettled;
+        isETHDenominated = _isETHDenominated;
 
         leverageRatio = _leverageRatio;
     }
@@ -92,8 +92,6 @@ contract AssetSwap {
 
         takerLongRate = target + basis;
         takerShortRate = target - basis;
-
-        require(0 < takerLongRate + takerShortRate, "Long + Short must be > 0"); 
         
         emit RatesUpdated(target, basis);
     }
@@ -297,15 +295,13 @@ contract AssetSwap {
         }
     }
 
-    /** Function to easily get specific information about a subcontract
+    /** Function to easily get specific take information about a subcontract
     * @param lp the address of the lp with the subcontract
     * @param id the id of the subcontract
     * @return takerMargin the taker's margin
     * @return reqMargin the required margin of the subcontract
     * @return initialDay the day of the week the contract was started on
     * @return side the LP's side for the contract
-    * @return isCancelled the status of if the subcontract is cancelled
-    * @return isBurned the status of if the subcontract is burned
     */
     function getSubcontractData(address lp, bytes32 id)
         public
@@ -314,16 +310,38 @@ contract AssetSwap {
             uint takerMargin,
             uint reqMargin,
             uint8 initialDay,
-            bool side, 
-            bool isCancelled, 
-            bool isBurned,
-            bool toDelete)
+            bool side)
     {
         address book = books[lp];
         if (book != 0x0) {
             Book b = Book(book);
             (takerMargin, reqMargin, initialDay, side,
-                isCancelled, isBurned, toDelete) = b.getSubcontract(id);
+                , , , ) = b.getSubcontract(id);
+        }
+    }
+
+    /** Function to get specific status information about a subcontract
+    * @param lp the address of the lp with the subcontract
+    * @param id the id of the subcontract
+    * @return isCancelled the status of if the subcontract is cancelled
+    * @return isBurned the status of if the subcontract is burned
+    * @return toDelete if the subcontract is marked for deletion
+    * @return takerCloseDiscount if the takers close fee will be lowered
+    */
+    function getSubcontractStatus(address lp, bytes32 id)
+        public
+        view
+        returns (
+            bool isCancelled,
+            bool isBurned,
+            bool toDelete,
+            bool takerCloseDiscount)
+    {
+        address book = books[lp];
+        if (book != 0x0) {
+            Book b = Book(book);
+            (, , , ,
+                isCancelled, isBurned, toDelete, takerCloseDiscount) = b.getSubcontract(id);
         }
     }
 
@@ -377,10 +395,10 @@ contract AssetSwap {
             int assetReturn = int((assetPrice * (1 ether)) / assetPastPrice) - 1 ether;
             takerLongReturns[i] = assetReturn - ((1 ether) * int(takerLongRate))/1e4;
             takerShortReturns[i] = (-1 * assetReturn) - ((1 ether) * int(takerShortRate))/1e4;
-            if (isCryptoSetted)
+            if (isETHDenominated)
             {   
-                takerLongReturns[i] = (takerLongReturns[i] * int(leverageRatio * assetPastPrice))/int(assetPrice * 100);
-                takerShortReturns[i] = (takerShortReturns[i] * int(leverageRatio * assetPastPrice))/int(assetPrice * 100);
+                takerLongReturns[i] = (takerLongReturns[i] * int(leverageRatio))/100;
+                takerShortReturns[i] = (takerShortReturns[i] * int(leverageRatio))/100;
             }
             else
             {
