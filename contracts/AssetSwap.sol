@@ -159,7 +159,7 @@ contract AssetSwap {
                 freeMargin = lpShort - lpLong;
         }
 
-        require(msg.value <= (book.lpMargin() - lpRM)/2 + freeMargin, "RM to large for this LP");
+        require(amount <= (book.lpMargin() - lpRM)/2 + freeMargin, "RM to large for this LP");
         bytes32 newId = book.take.value(msg.value)(msg.sender, amount, takerSide);
         emit OrderTaken(lp, msg.sender, newId);
     }
