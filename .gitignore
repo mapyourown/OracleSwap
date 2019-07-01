@@ -8,5 +8,8 @@ build/
 # ignore saved blockchain
 data/
 
+# ignore test dir
+test/
+
 # ignore secret file
 secret-mneumonic.js
