@@ -38,25 +38,25 @@ module.exports = function(deployer, network, accounts) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			ethswap = instance;
-			console.log("ETH Swap Market: " + ethswap.address);
+			console.log("ETH AssetSwap: " + ethswap.address);
 			return factory.newSwapMarket(oracle.address, 1, 1000, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance){
 			spxswap = instance;
-			console.log("SPX Swap Market: " + spxswap.address);
+			console.log("SPX AssetSwap: " + spxswap.address);
 			return factory.newSwapMarket(oracle.address, 2, 250, false);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			btcswap = instance;
-			console.log("BTC Swap Market: " + btcswap.address);
+			console.log("BTC AssetSwap: " + btcswap.address);
 			return factory.newSwapMarket(oracle.address, 3, 250, true);
 		}).then(function (result) {
 			return AssetSwap.at(result.logs[0].args._new);
 		}).then(function (instance) {
 			ethbtcswap = instance;
-			console.log("ETHBTC Swap Market: " + ethbtcswap.address);
+			console.log("ETHBTC AssetSwap: " + ethbtcswap.address);
 			return oracle.addReader(ethswap.address);
 		}).then(function (result) {
 			return oracle.addReader(spxswap.address);
