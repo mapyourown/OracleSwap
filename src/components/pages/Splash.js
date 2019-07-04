@@ -24,8 +24,7 @@ class Splash extends Component {
   constructor(props, context) {
     super(props)
     autoBind(this)
-    console.log(props)
-    console.log(context)
+    
     //console.log('splash:', testData)
     
     this.state = {
@@ -50,6 +49,7 @@ class Splash extends Component {
         chartSymbols: ["SP:SPX/CBOE:VIX", "BTCUSD"]
     }
 
+
     this.contracts = context.drizzle.contracts
     this.assets = [
         {
@@ -70,8 +70,8 @@ class Splash extends Component {
         }
     ]
     this.drizzle = context.drizzle
-    //console.log(this.contracts)
-    //console.log(this.assets)
+    console.log(props)
+    console.log(context)
   }
   
   openWhitepaper() {
@@ -190,6 +190,8 @@ class Splash extends Component {
                             <a href="/oraclehist">View Oracle History</a>
                             <br/>
                             <a href="/burns">View Burn History</a>
+                            <br/>
+                            <a href="/faqs">View FAQS</a>
                             <br/>
                             <a href="winkdex.com">View Winkdex</a>
                             <br/>

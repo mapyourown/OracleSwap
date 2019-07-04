@@ -15,12 +15,14 @@ import Triangle from '../basics/Triangle'
 import Form from '../basics/Form.js'
 import IndicatorC from '../basics/IndicatorC.js'
 import SubcontractRow from '../blocks/SubcontractRow.js'
+import DrizzleSubcontractRow from '../blocks/DrizzleSubcontractRow'
 import Chart from '../basics/Chart.js';
 import TableA from '../blocks/TableA.js';
 import { Themes } from 'react-tradingview-widget';
 import Input from '../basics/Input.js';
 import Button from '../basics/Button.js';
 import TruncatedAddress from '../basics/TruncatedAddress.js';
+import Book from '../../../build/contracts/Book.json'
 
 
 class BookInfo extends Component {
@@ -53,9 +55,18 @@ class BookInfo extends Component {
       "BTCUSD": "BTCSwap",
       "BTCETH": "BTCETHSwap"
     }
+    this.idDict = {
+      "ETHSwap": 0,
+      "SPXSwap": 1,
+      "BTCSwap": 2,
+      "BTCETHSwap": 3
+    }
+
+
 
     this.currentContract = this.props.routeParams.contract;
     this.currentLP = this.props.routeParams.address;
+    this.asset_id = this.idDict[this.contractDict[this.currentContract]]
     console.log(this.currentContract)
     console.log(this.currentLP)
 
@@ -135,6 +146,10 @@ class BookInfo extends Component {
       
       speculativeFinalProfit: null
     }
+
+    this.assetPastPricesKeys = {}
+    this.ethPastPricesKeys = {}
+    this.takekeys = {}
   }
   
   setNewLpAddress(value) {
@@ -179,17 +194,17 @@ class BookInfo extends Component {
   
   changeNewMargin() {
     const {newMargin} = this.state
-    console.log("Change: New margin", newMargin)
-    this.contracts[this.contractDict[this.currentContract]].methods.lpFund(this.currentLP).send({
+    console.log("Funding margin: ", newMargin)
+    this.contracts[this.contractDict[this.currentContract]].methods.lpFund.cacheSend(this.currentLP, {
       from: this.props.accounts[0], value: newMargin * 1e18
     });
-    console.log(this.props.accounts[0])
   }
   
   changeNewMarginToWithdrawalBalance() {
     const {newMarginToWithdrawalBalance} = this.state
     console.log("Change: New margin to withdrawal balance", newMarginToWithdrawalBalance)
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.lpMarginWithdrawal.cacheSend(newMarginToWithdrawalBalance * 1e18, {
+      from: this.props.accounts[0]});
   }
   
   calculateCustomFinalPrices() {
@@ -202,7 +217,7 @@ class BookInfo extends Component {
   withdrawBalance() {
       const {withdrawalBalance} = this.state
       console.log("Balance withdrawal requested", withdrawalBalance)
-      // TODO
+      this.contracts[this.contractDict[this.currentContract]].methods.withdrawBalance.cacheSend({from: this.props.accounts[0]});
   }
 
   createBook() {
@@ -212,13 +227,13 @@ class BookInfo extends Component {
     this.contracts[this.contractDict[this.currentContract]].methods.createBook.cacheSend(minRM, {
       from: this.props.accounts[0]
     });
-    this.contracts[this.contractDict[this.currentContract]].methods.createBook(minRM).send({
-      from: this.props.accounts[0]
-    });
   }
   
   openSubcontract(id) {
       console.log("Opened subcontract", id)
+      const url = '/' + this.currentContract + '/lp/'
+       + this.currentLP + '/subcontract/' + id;
+      window.open(url, '_blank');
   }
 
   componentDidMount() {
@@ -309,6 +324,32 @@ class BookInfo extends Component {
     }))
   }
 
+  getTakeHistory(id) {
+    const web3 = this.context.drizzle.web3
+    const swap = this.contracts[this.contractDict[this.currentContract]]
+    const contractweb3 = new web3.eth.Contract(swap.abi, swap.address);
+    var takes = {};
+    contractweb3.getPastEvents(
+      'OrderTaken', 
+      {
+        fromBlock: 0,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        if (element.returnValues.lp = this.currentLP)
+        {
+          takes[element.returnValues.id] =
+            {
+              "data": this.contracts[this.contractDict[this.currentContract]].methods.getSubcontractData.cacheCall(this.currentLP, element.returnValues.id),
+              "status": this.contracts[this.contractDict[this.currentContract]].methods.getSubcontractStatus.cacheCall(this.currentLP, element.returnValues.id)
+            }
+        }
+      }, this);
+      this.takekeys = takes
+    }.bind(this));
+  }
+
   getBookData() {
     this.bookDataKey = this.contracts[this.contractDict[this.currentContract]].methods.getBookData.cacheCall(this.currentLP)
   }
@@ -322,10 +363,25 @@ class BookInfo extends Component {
     this.balanceKey = this.contracts[this.contractDict[this.currentContract]].methods.withdrawBalances.cacheCall(this.currentLP)
   }
 
+  getOracleSettleTime() {
+    this.settleTimeKey = this.contracts.Oracle.methods.getLastSettleTime.cacheCall(this.asset_id)
+  }
+
+  getOraclePastPrices() {
+    var day;
+    for (day = 0; day < 8; day++) { 
+      this.assetPastPricesKeys[day] = this.contracts.Oracle.methods.lastWeekPrices.cacheCall(this.asset_id, day)
+      this.ethPastPricesKeys[day] = this.contracts.Oracle.methods.lastWeekPrices.cacheCall(0, day)
+    }
+  }
+
   findValues(id) {
     this.getBookData()
     this.getLongAndShortRates()
     this.getWithdrawalBalance()
+    this.getOracleSettleTime()
+    this.getOraclePastPrices()
+    this.getTakeHistory()
     this.lookupName(id)
     this.calculateOpenMargin(id)
     this.calculateTotalShorts(id)
@@ -377,6 +433,52 @@ class BookInfo extends Component {
       balance = this.props.contracts[this.contractDict[this.currentContract]].withdrawBalances[this.balanceKey].value
     }
 
+    /*let pastPrices = {};
+    if (this.pastPricesKey in this.props.contracts.Oracle.lastWeekPrices)
+    {
+      pastPrices = this.props.contracts.Oracle.lastWeekPrices[this.pastPricesKey].value
+    }*/
+
+    let assetPastPrices = []
+    if (Object.keys(this.assetPastPricesKeys).length !== 0)
+    {
+      if (Object.keys(this.assetPastPricesKeys).reduce((status, item) => status && this.assetPastPricesKeys[item] in this.props.contracts.Oracle.lastWeekPrices))
+      {
+        assetPastPrices = Object.keys(this.assetPastPricesKeys).map((day) => this.props.contracts.Oracle.lastWeekPrices[this.assetPastPricesKeys[day]].value)
+      } 
+    }
+    console.log(assetPastPrices)
+
+    let ethPastPrices = []
+    if (Object.keys(this.ethPastPricesKeys).length !== 0)
+    {
+      if (Object.keys(this.ethPastPricesKeys).reduce((status, item) => status && this.ethPastPricesKeys[item] in this.props.contracts.Oracle.lastWeekPrices))
+      {
+        ethPastPrices = Object.keys(this.ethPastPricesKeys).map((day) => this.props.contracts.Oracle.lastWeekPrices[this.ethPastPricesKeys[day]].value)
+      } 
+    }
+    console.log(ethPastPrices)
+
+    let settleTime = 0;
+    if (this.settleTimeKey in this.props.contracts.Oracle.getLastSettleTime)
+    {
+      settleTime = this.props.contracts.Oracle.getLastSettleTime[this.settleTimeKey].value
+    }
+    let settlementPeriod = Math.floor(Date.now() / 1000) - settleTime < 300;
+
+    let subcontracts = {}
+    Object.keys(this.takekeys).forEach(function(id) {
+      if (this.takekeys[id]['data'] in this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData &&
+        this.takekeys[id]['status'] in this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus)
+      {
+        let data = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData[this.takekeys[id]['data']].value
+        let status = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus[this.takekeys[id]['status']].value
+        //subcontracts[id] = {data: data, status: status}
+        subcontracts[id] = {...data, ...status}
+      }
+    }, this);
+
+    
     return (
         <Split
         side={
@@ -408,7 +510,7 @@ class BookInfo extends Component {
                 
                 <Flex
                 pt="10px">
-                    <Box mr="22px"><LabeledText label="Settlement Period" text={this.state.settlementPeriod ? "Yes" : "No"} transform="uppercase" spacing="1px"/></Box>
+                    <Box mr="22px"><LabeledText label="Settlement Period" text={settlementPeriod ? "Yes" : "No"} transform="uppercase" spacing="1px"/></Box>
                     <Box mr="15px"><LabeledText label="Req. Margin" text={bookData.lpRM/1e18 + " Ξ"} spacing="1px"/></Box>
                     <Box><LabeledText label="Actual Margin" text={bookData.lpMargin/1e18 + " Ξ"} spacing="1px"/></Box>
                 </Flex>
@@ -440,7 +542,7 @@ class BookInfo extends Component {
                             <IndicatorB ml="20px" size="15px" label="Short" value={shortRate/1e4 + "%"}/>
                         </Flex>
                         <Box style={{textAlign: "center"}}>
-                            <Text size="12px" color={C}>LP Margin Rates</Text>
+                            <Text size="12px" color={C}>Funding Rates</Text>
                         </Box>
                     </Box>
                 </Flex>
@@ -448,7 +550,7 @@ class BookInfo extends Component {
                 
             <Box mt="45px" mx="30px">
                 <Box>
-                    <Text weight="bold">Oracle Prices</Text>
+                    <Text weight="bold">Oracle Past Prices</Text>
                     <Flex>
                         <Box width={0.3}>
                             <TableA
@@ -470,6 +572,22 @@ class BookInfo extends Component {
                             theme={Themes.DARK}
                             width="100%"
                             height="250px"/>
+                        </Box>
+                    </Flex>
+                </Box>
+
+                <Box>
+                    <Text weight="bold">Oracle Last Week History</Text>
+                    <Flex>
+                        <Box width={0.3}>
+                            <TableA
+                            mt="20px"
+                            columns={[
+                                "ETH", "SPX"
+                            ]}
+                            rows={
+                                ethPastPrices.map((val, index) => [index, val/1e6, assetPastPrices[index]/1e6])
+                              }/>
                         </Box>
                     </Flex>
                 </Box>
@@ -497,11 +615,12 @@ class BookInfo extends Component {
                     style={{
                         borderTop: `thin solid ${D}`
                     }}>
-                        {this.state.subcontracts.map((subcontract, index) =>
-                            <SubcontractRow
+                        {Object.keys(subcontracts).map((id, index) =>
+                            <DrizzleSubcontractRow
                             key={index}
-                            onOpenDetail={() => this.openSubcontract("0x8976a846ef2b46b07af60d744f7bb120e82666f2")}
-                            fields={subcontract}/>
+                            onOpenDetail={() => this.openSubcontract(id)}
+                            id = {id}
+                            fields={subcontracts[id]}/>
                         )}
                     </Box>
                 </Box>

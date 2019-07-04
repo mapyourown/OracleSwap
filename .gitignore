@@ -11,5 +11,8 @@ data/
 # ignore test dir
 test/
 
+# ignore MA contract
+contracts/ManagedAccount.sol
+
 # ignore secret file
 secret-mneumonic.js

@@ -8,10 +8,8 @@ import { Box, Flex } from '@rebass/grid'
 import Logo from '../basics/Logo'
 import Text from '../basics/Text'
 import Form from '../basics/Form'
-import {B, E, C, A, D, G} from '../basics/Colors'
+import {B, C, D, G} from '../basics/Colors'
 import IndicatorB from '../basics/IndicatorB'
-import IndicatorC from '../basics/IndicatorC'
-import IndicatorA from '../basics/IndicatorA'
 import LabeledText from '../basics/LabeledText'
 import {autoBind} from 'react-extras'
 import Triangle from '../basics/Triangle'
@@ -19,7 +17,7 @@ import Chart from '../basics/Chart'
 import { Themes } from 'react-tradingview-widget'
 import Button from '../basics/Button'
 import TruncatedAddress from '../basics/TruncatedAddress.js';
-
+import DrizzleSubcontractRow from '../blocks/DrizzleSubcontractRow'
 
 class BookInfo extends Component {
 
@@ -59,6 +57,8 @@ class BookInfo extends Component {
 
     this.contracts = context.drizzle.contracts
     this.drizzle = context.drizzle
+
+    this.takeKeys = {}
 
     this.state = {
       contractID: 1,
@@ -120,13 +120,15 @@ class BookInfo extends Component {
   takeLongPosition() {
     const {newLongPosition} = this.state
     console.log("New long position", newLongPosition)
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.take.cacheSend(this.currentLP,
+      newLongPosition, true, {from: this.props.accounts[0], value: newLongPosition * 1e18});
   }
 
   takeShortPosition() {
     const {newShortPosition} = this.state
     console.log("New short position", newShortPosition)
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.take.cacheSend(this.currentLP,
+      newShortPosition, false, {from: this.props.accounts[0], value: newShortPosition * 1e18});
   }
 
   componentDidMount() {
@@ -232,10 +234,44 @@ class BookInfo extends Component {
 
   }
 
+  openSubcontract(id) {
+      console.log("Opened subcontract", id)
+      const url = '/' + this.currentContract + '/lp/'
+       + this.currentLP + '/subcontract/' + id;
+      window.open(url, '_blank');
+  }
+
+  getAllTakes() {
+    const web3 = this.context.drizzle.web3
+    const swap = this.drizzle.contracts[this.contractDict[this.currentContract]]
+    const contractweb3 = new web3.eth.Contract(swap.abi, swap.address);
+    var takes = {};
+    contractweb3.getPastEvents(
+      'OrderTaken', 
+      {
+        filter: {taker: this.props.accounts[0]},
+        fromBlock: 0,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        if (element.returnValues.lp = this.currentLP)
+        {
+          takes[element.returnValues.id] =
+            {
+              "data": this.contracts[this.contractDict[this.currentContract]].methods.getSubcontractData.cacheCall(this.currentLP, element.returnValues.id),
+              "status": this.contracts[this.contractDict[this.currentContract]].methods.getSubcontractStatus.cacheCall(this.currentLP, element.returnValues.id)
+            }
+        }
+      }, this);
+      this.takeKeys = takes
+    }.bind(this));
+  }
+
   findValues(id) {
     this.getBookData()
     this.getLongAndShortRates()
-
+    this.getAllTakes()
     this.lookupName(id)
     this.calculateOpenMargin(id)
     this.calculateTotalShorts(id)
@@ -281,6 +317,19 @@ class BookInfo extends Component {
     {
       longRate = this.props.contracts[this.contractDict[this.currentContract]].takerShortRate[this.shortKey].value
     }
+
+    let subcontracts = {}
+    Object.keys(this.takeKeys).forEach(function(id) {
+      if (this.takeKeys[id]['data'] in this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData &&
+        this.takeKeys[id]['status'] in this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus)
+      {
+        let data = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData[this.takeKeys[id]['data']].value
+        let status = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus[this.takeKeys[id]['status']].value
+        //subcontracts[id] = {data: data, status: status}
+        subcontracts[id] = {...data, ...status}
+      }
+    }, this);
+
     return (
         <Split
         side={
@@ -344,13 +393,19 @@ class BookInfo extends Component {
                     </Box>
                     <Box>
                         <Triangle margin="15px" scale={1.8} color="#D55757" rotation="180deg"/> <Text>Your position in this book</Text>
-                        <Flex mt="20px">
-                            <Flex mr="40px">
-                                <Box width="150px"><Button onClick={function () {return}}>Open detail</Button></Box>
-                                <Box mr="20px"><LabeledText label="Position" big transform="capitalize" text={this.state.position.type}/></Box>
-                                <Box><LabeledText label="Amount" big text={this.state.position.amount + " Ξ"}/></Box>
-                            </Flex>
-                        </Flex>
+                        <Box
+                          mt="20px"
+                          style={{
+                              borderTop: `thin solid ${D}`
+                          }}>
+                            {Object.keys(subcontracts).map((id, index) =>
+                                <DrizzleSubcontractRow
+                                key={index}
+                                onOpenDetail={() => this.openSubcontract(id)}
+                                id = {id}
+                                fields={subcontracts[id]}/>
+                            )}
+                        </Box>
                     </Box>
                     <br/>
                     <Box>

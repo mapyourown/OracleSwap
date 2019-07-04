@@ -158,7 +158,6 @@ class DrizzleContract extends Component {
   getLPInfo(lp) {
     
     this.allLPKeys[lp] = this.contracts[this.contractDict[this.asset_id]].methods.getBookData.cacheCall(lp);
-    console.log(this.allLPKeys)
   }
 
   getBasis(id) {

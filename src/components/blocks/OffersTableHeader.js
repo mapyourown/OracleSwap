@@ -16,19 +16,8 @@ export default ({order: [by, asc], setOrder}) =>
         style={{
             borderBottom: `thin solid ${D}`
         }}>
-            <Box width="calc(100% - 700px)" alignItems="flex-end" pt="20px">
+            <Box width="calc(100% - 600px)" alignItems="flex-end" pt="20px">
                 <Text size="14px">Liquidity Provider</Text>
-            </Box>
-            <Box width="250px">
-                <Box mb="7px">
-                    <Text>Taker Margin Rates</Text>
-                    <br/>
-                    <Text>(% per week)</Text>
-                </Box>
-                <Flex width="130px">
-                    <Field width={1/2} onClick={() => setOrder(1, !asc)}><Text size="14px">Long {by == 1 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Text></Field>
-                    <Field width={1/2} onClick={() => setOrder(2, !asc)}><Text size="14px">Short</Text> {by == 2 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
-                </Flex>
             </Box>
             <Box width="350px">
                 <Box mb="7px"><Text>Current Balance</Text><br/></Box>                

@@ -84,8 +84,6 @@ class LPHome extends Component {
             <p>Move excess margin into balance</p>
             <ContractForm contract="SwapMarket" method="lpMarginWithdrawal" />
             <br/>
-            <p>Change LP </p>
-            <ContractForm contract="SwapMarket" method="changelp"/>
             <WithdrawForm />
           </div>
 	    	</div>

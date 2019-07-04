@@ -79,7 +79,6 @@ class LPPNLForm extends Component {
     this.drizzle.addContract(config)
     this.keys = {};
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
-    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.props.accounts[0])
     this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
   }
 
@@ -150,10 +149,6 @@ class LPPNLForm extends Component {
     if (this.ethPastKey in this.props.contracts.MultiOracle.getPastPrices)
       ethPastWeek = this.props.contracts.MultiOracle.getPastPrices[this.ethPastKey].value;
 
-    var lpChangeAddress;
-    if (this.keys.lpChangesKey in this.props.contracts.SwapMarket.lpChanges)
-      lpChangeAddress = this.props.contracts.SwapMarket.lpChanges[this.keys.lpChangesKey].value;
-
     return (
       <div>
         <ShowLPPNL assetData={assetData} ethData={ethData} subcontract={subcontract}  
@@ -161,7 +156,6 @@ class LPPNLForm extends Component {
           assetPrice={assetPrice} ethPrice={ethPrice}
           assetStart={this.state.startingAssetPrice * 1000000} ethStart={this.state.startingEthPrice * 1000000}
           settleTime={lastSettleTime}
-          lpChangeAddress={lpChangeAddress}
           lp={this.props.accounts[0]} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">

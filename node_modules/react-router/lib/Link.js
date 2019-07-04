@@ -73,7 +73,8 @@ var Link = (0, _createReactClass2.default)({
     activeClassName: _propTypes.string,
     onlyActiveOnIndex: _propTypes.bool.isRequired,
     onClick: _propTypes.func,
-    target: _propTypes.string
+    target: _propTypes.string,
+    innerRef: (0, _propTypes.oneOfType)([_propTypes.string, _propTypes.func])
   },
 
   getDefaultProps: function getDefaultProps() {
@@ -107,7 +108,8 @@ var Link = (0, _createReactClass2.default)({
         activeClassName = _props.activeClassName,
         activeStyle = _props.activeStyle,
         onlyActiveOnIndex = _props.onlyActiveOnIndex,
-        props = _objectWithoutProperties(_props, ['to', 'activeClassName', 'activeStyle', 'onlyActiveOnIndex']);
+        innerRef = _props.innerRef,
+        props = _objectWithoutProperties(_props, ['to', 'activeClassName', 'activeStyle', 'onlyActiveOnIndex', 'innerRef']);
 
     // Ignore if rendered outside the context of router to simplify unit testing.
 
@@ -118,7 +120,7 @@ var Link = (0, _createReactClass2.default)({
     if (router) {
       // If user does not specify a `to` prop, return an empty anchor tag.
       if (!to) {
-        return _react2.default.createElement('a', props);
+        return _react2.default.createElement('a', _extends({}, props, { ref: innerRef }));
       }
 
       var toLocation = resolveToLocation(to, router);
@@ -139,7 +141,7 @@ var Link = (0, _createReactClass2.default)({
       }
     }
 
-    return _react2.default.createElement('a', _extends({}, props, { onClick: this.handleClick }));
+    return _react2.default.createElement('a', _extends({}, props, { onClick: this.handleClick, ref: innerRef }));
   }
 });
 

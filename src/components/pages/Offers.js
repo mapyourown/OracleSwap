@@ -50,6 +50,7 @@ class Offers extends Component {
     }
     this.currentContract = this.props.routeParams.contract;
     
+    this.lpKeys = {}
 
     this.contracts = context.drizzle.contracts
     this.drizzle = context.drizzle
@@ -126,19 +127,64 @@ class Offers extends Component {
         newBalance: ""
     }
   }
+
+  getAllLPs() {
+    const web3 = this.context.drizzle.web3
+    const swap = this.drizzle.contracts[this.contractDict[this.currentContract]]
+    const contractweb3 = new web3.eth.Contract(swap.abi, swap.address);
+    var LPMakes = {};
+    var MadeEventLPS = []
+    var HardCodedLPS = [
+      {
+        returnValues: {
+          lp: '0x2eef12ee57fb8ecdea24f1d6e61db326e4072350',
+          newLPMargin: 20e18
+        }
+      }]
+    /*contractweb3.getPastEvents(
+      'LPFundedMargin', 
+      {
+        fromBlock: 0,
+        toBlock: 'latest'
+      }
+    ).then(function(events) {
+      MadeEventLPS = events
+      MadeEventLPS.forEach(function(element) {
+        LPMakes[element.returnValues.lp] =
+          {
+            "bookData": this.contracts[this.contractDict[this.currentContract]].methods.getBookData.cacheCall(element.returnValues.lp),
+          }
+      }, this);
+      this.lpKeys = LPMakes
+    }.bind(this));*/
+    HardCodedLPS.forEach(function(element) {
+      LPMakes[element.returnValues.lp] =
+        {
+          "bookData": this.contracts[this.contractDict[this.currentContract]].methods.getBookData.cacheCall(element.returnValues.lp),
+        }
+    }, this);
+    this.lpKeys = LPMakes
+  }
   
   openLP(lpAddress) {
-      console.log("Open LP", lpAddress)
-    // TODO
+    console.log("Open LP", lpAddress)
+    const url = '/' + this.currentContract + '/lp/'
+      + lpAddress + '/provider';
+    window.open(url, '_blank');
   }
   
   takeFromLP(lpAddress) {
     console.log("Take from LP", lpAddress)
-    // TODO
+    const url = '/' + this.currentContract + '/lp/'
+      + lpAddress + '/taker';
+    window.open(url, '_blank');
   }
 
   openBook() {
     console.log("Open Book Clicked")
+    const url = '/' + this.currentContract + '/lp/'
+       + this.props.accounts[0] + '/provider';
+      window.open(url, '_blank');
   }
   
   setTakerMarginRateShort(value) {
@@ -238,6 +284,7 @@ class Offers extends Component {
     this.lookupName(id)
     this.getBookData()
     this.getLongAndShortRates()
+    this.getAllLPs()
     this.calculateTotalShorts(id)
     this.calculateTotalLongs(id)
     this.calculateTotalSubcontracts(id)
@@ -288,7 +335,15 @@ class Offers extends Component {
       longRate = this.props.contracts[this.contractDict[this.currentContract]].takerShortRate[this.shortKey].value
     }
 
-    //console.log(bookData)
+    let books = {}
+    Object.keys(this.lpKeys).forEach(function(id) {
+      if (this.lpKeys[id]['bookData'] in this.props.contracts[this.contractDict[this.currentContract]].getBookData)
+      {
+        books[id] = this.props.contracts[this.contractDict[this.currentContract]].getBookData[this.lpKeys[id]['bookData']].value
+      }
+    }, this);
+
+    //console.log(books)
 
         return (
         <Split
@@ -346,19 +401,17 @@ class Offers extends Component {
                     <Text weight="bold">Current Offers</Text>
                     <OffersTable
                     rows={
-                        this.state.offers.map(offer =>
+                        Object.keys(books).map(lp =>
                             ({
                                 fields: [
-                                    offer.lpAddress,
-                                    offer.marginRates.long.toFixed(2) + "%",
-                                    offer.marginRates.short.toFixed(2) + "%",
-                                    offer.currentBalance.long + " Ξ",
-                                    offer.currentBalance.short + " Ξ",
-                                    offer.availableMargin + " Ξ",
-                                    offer.remainingMargin.toFixed(2) + " Ξ"
+                                    lp,
+                                    books[lp]['totalLong']/1e18 + " Ξ",
+                                    books[lp]['totalShort']/1e18 + " Ξ",
+                                    books[lp]['lpRM']/1e18 + " Ξ",
+                                    (books[lp]['lpMargin']/1e18).toFixed(2) + " Ξ"
                                 ],
-                                onOpenLP: () => this.openLP(offer.lpAddress),
-                                onTakeFromThisLP: () => this.takeFromLP(offer.lpAddress)
+                                onOpenLP: () => this.openLP(lp),
+                                onTakeFromThisLP: () => this.takeFromLP(lp)
                             })
                         )
                     }/>

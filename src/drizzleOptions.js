@@ -1,47 +1,49 @@
-import ComplexStorage from './../build/contracts/ComplexStorage.json'
-import SimpleStorage from './../build/contracts/SimpleStorage.json'
-import TutorialToken from './../build/contracts/TutorialToken.json'
-import SwapMarket from './../build/contracts/SwapMarket.json'
-import MuliOracle from './../build/contracts/MultiOracle.json'
+import AssetSwap from './../build/contracts/AssetSwap.json'
+import Oracle from './../build/contracts/Oracle.json'
 
 const Web3 = require('web3');
-const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+
+//const web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"));
+//const web3 = new Web3(new Web3.providers.WebsocketProvider("wss://mainnet.infura.io/ws/v3/30a3fd3439754a74aa30ffae717d5d4c"));
+//const web3 = new Web3(new Web3.providers.HttpProvider("https://mainnet.infura.io/v3/30a3fd3439754a74aa30ffae717d5d4c"));
 
 const drizzleOptions = {
   web3: {
     block: false,
     fallback: {
       type: 'ws',
-      url: 'ws://127.0.0.1:8545'
+      url: 'wss://mainnet.infura.io/ws/v3/30a3fd3439754a74aa30ffae717d5d4c'
     }
   },
   contracts: [
-    ComplexStorage,
-    SimpleStorage,
-    TutorialToken,
-    MuliOracle,
+    Oracle,
+    /*{
+      contractName: 'ETHSwap',
+      web3Contract: new web3.eth.Contract(AssetSwap.abi, '0xa651c4d689eac3a740cb83c090a72a48dd8764bb')
+    },
     {
       contractName: 'SPXSwap',
-      web3Contract: new web3.eth.Contract(SwapMarket.abi, '0xc1d7e6a13813eeb5aa771ad648a3d8e2febe175a')
+      web3Contract: new web3.eth.Contract(AssetSwap.abi, '0x08f41c5218dca75e7e93f2fa450f26b09a28dd10')
     },
     {
       contractName: 'BTCSwap',
-      web3Contract: new web3.eth.Contract(SwapMarket.abi, '0xf04cfecf064ce1774563099574e7ae75e159fa0e')
+      web3Contract: new web3.eth.Contract(AssetSwap.abi, '0x4283073a6d8cb0f1b8fec504ca1ca925f7c56fe1')
     },
     {
-      contractName: 'ETHBTCSwap',
-      web3Contract: new web3.eth.Contract(SwapMarket.abi, '0x192a38cc49a1b008fc5b2829cbd499737945b340')
-    },
-    {
-      contractName: 'SwapMarket',
-      web3Contract: new web3.eth.Contract(SwapMarket.abi, '0xc1d7e6a13813eeb5aa771ad648a3d8e2febe175a')
-    },
+      contractName: 'BTCETHSwap',
+      web3Contract: new web3.eth.Contract(AssetSwap.abi, '0x0363ebf9b059aa6287b4e287447ec0588ca34a73')
+    },*/
   ],
   events: {
-    SimpleStorage: ['StorageSet'],
-    SwapMarket: [
+    AssetSwap: [
       'OrderTaken',
-      'OpenMargin'
+      'FirstPrice',
+      'Burn'
+    ],
+    Oracle: [
+      'PriceUpdated',
+      'SettlePrice',
+      'PriceCorrected'
     ]
   },
   polls: {

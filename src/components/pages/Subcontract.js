@@ -109,24 +109,16 @@ class SubcontractInfo extends Component {
 
   }
   
-  LPCancel() {
+  PlayerCancel(margin) {
     console.log("Contract LP cancelation")
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.playerCancel.cacheSend(
+      this.currentLP, this.currentSubcontract, {from: this.props.accounts[0], value: margin * 0.015});
   }
   
-  LPBurn() {
+  PlayerBurn(margin) {
     console.log("Contract LP burn")
-    // TODO
-  }
-  
-  takerCancel() {
-    console.log("Contract taker cancelation")
-    // TODO
-  }
-
-  takerBurn() {
-    console.log("Contract taker burn")
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.playerBurn.cacheSend(
+      this.currentLP, this.currentSubcontract, {from: this.props.accounts[0], value: margin *  0.25});
   }
   
   setNewPlayerAddress(value) {
@@ -134,11 +126,11 @@ class SubcontractInfo extends Component {
   }
   
   setNewExtraMargin(value) {
-    this.setState(state => ({...state, newExtraMargin: value}))
+   this.setState(state => ({...state, newExtraMargin: value})) 
   }
   
   setNewWithdrawMargin(value) {
-    this.setState(state => ({...state, newWithdrawMargin: value}))
+    this.setState(state => ({...state, newWithdrawMargin: value})) 
   }
   
   changeNewPlayerAddress() {
@@ -150,13 +142,15 @@ class SubcontractInfo extends Component {
   changeNewExtraMargin() {
     const {newExtraMargin} = this.state
     console.log("Change: New extra margin", newExtraMargin)
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.takerFund.cacheSend(
+      this.currentLP, this.currentSubcontract, {from: this.props.accounts[0], value: newExtraMargin*1e18});
   }
   
   changeNewWithdrawMargin() {
     const {newWithdrawMargin} = this.state
     console.log("Change: New withdraw margin", newWithdrawMargin)
-    // TODO
+    this.contracts[this.contractDict[this.currentContract]].methods.takerWithdrawal.cacheSend(
+      newWithdrawMargin * 1e18, this.currentLP, this.currentSubcontract, {from: this.props.accounts[0]});
   }
 
   componentDidMount() {
@@ -351,10 +345,10 @@ class SubcontractInfo extends Component {
                     <Box mb="15px"><Text size="16px">LP Actions</Text></Box>
                     <Flex>
                         <Box mr="20px">
-                            <Button width="120px" bgColor={H} onClick={this.LPBurn}><Flex justifyContent="center"><Box mr="20px"><WarningSign width="13"/></Box> <Box>Burn</Box></Flex></Button>
+                            <Button width="120px" bgColor={H} onClick={() => this.PlayerBurn(subkdata.reqMargin)}><Flex justifyContent="center"><Box mr="20px"><WarningSign width="13"/></Box> <Box>Burn</Box></Flex></Button>
                         </Box>
                         <Box>
-                            <Button width="120px" bgColor={I} onClick={this.LPCancel}><Flex justifyContent="center"><Box>Cancel</Box></Flex></Button>
+                            <Button width="120px" bgColor={I} onClick={() => this.PlayerCancel(subkdata.reqMargin)}><Flex justifyContent="center"><Box>Cancel</Box></Flex></Button>
                         </Box>
                     </Flex>
                 </Box>
@@ -365,14 +359,14 @@ class SubcontractInfo extends Component {
                     <Box mb="10px"><Text size="16px">Taker Actions</Text></Box>
                     <Flex>
                         <Box mr="20px">
-                            <Button width="120px" bgColor={H} onClick={this.takerBurn}><Flex justifyContent="center"><Box mr="20px"><WarningSign width="13"/></Box> <Box>Burn</Box></Flex></Button>
+                            <Button width="120px" bgColor={H} onClick={() => this.PlayerBurn(subkdata.reqMargin)}><Flex justifyContent="center"><Box mr="20px"><WarningSign width="13"/></Box> <Box>Burn</Box></Flex></Button>
                         </Box>
                         <Box>
-                            <Button width="120px" bgColor={I} onClick={this.takerCancel}><Flex justifyContent="center"><Box>Cancel</Box></Flex></Button>
+                            <Button width="120px" bgColor={I} onClick={() => this.PlayerCancel(subkdata.reqMargin)}><Flex justifyContent="center"><Box>Cancel</Box></Flex></Button>
                         </Box>
                     </Flex>
                     <Form mb="10px" value={this.state.newExtraMargin} onChange={this.setNewExtraMargin} onSubmit={this.changeNewExtraMargin} justifyContent="space-between" buttonWidth="105px"  label="Add margin" inputWidth="270px" placeholder="Set amount" buttonLabel="Add"/>
-                    <Form onChange={this.setNewMarginToWithdrawalBalance} value={this.state.newMarginToWithdrawalBalance} onSubmit={this.changeNewMarginToWithdrawalBalance} mb="20px" justifyContent="space-between" buttonWidth="95px" label="Move margin to withdrawal balance" inputWidth="280px" placeholder="Set amount" buttonLabel="Move"/>
+                    <Form onChange={this.setNewWithdrawMargin} value={this.state.newWithdrawMargin} onSubmit={this.changeNewWithdrawMargin} mb="20px" justifyContent="space-between" buttonWidth="95px" label="Move margin to withdrawal balance" inputWidth="280px" placeholder="Set amount" buttonLabel="Move"/>
                     <IndicatorC buttonLabel="Withdraw" onClick={this.withdrawBalance}>
                         <Text size="14px" underline={G}>Withdrawal balance</Text> <Text size="14px">{balance/1e18+" Ξ"}</Text>
                     </IndicatorC>

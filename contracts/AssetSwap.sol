@@ -38,6 +38,7 @@ contract AssetSwap {
     event FirstPrice(address lp, uint8 startDay);
     event Burn(address lp, bytes32 id, address sender);
     event RatesUpdated(int16 target, int16 basis);
+    event LPFundedMargin(address lp, uint newLPMargin);
     
     modifier onlyAdmin()
     {
@@ -216,6 +217,8 @@ contract AssetSwap {
         require(books[lp] != 0x0);
         Book b = Book(books[lp]);
         b.fundlpMargin.value(msg.value)();
+        uint newMargin = b.lpMargin();
+        emit LPFundedMargin(newMargin);
     }
     
     /** Moves value out of the taker margin into the withdraw balance

@@ -21,7 +21,6 @@ class TakerHome extends Component {
       takeAmount: '',
       takelpAddress: '',
       takerIsLong: "long"
-
     }
 
     this.contracts = context.drizzle.contracts

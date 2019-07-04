@@ -1,5 +1,5 @@
 import React from "react"
-import Triangle from '../basics/Triangle'
+//import Triangle from '../basics/Triangle'
 
 export default
     ({rotation, fill, color, margin, scale}) =>

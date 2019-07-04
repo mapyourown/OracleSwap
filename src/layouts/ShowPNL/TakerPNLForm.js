@@ -77,7 +77,6 @@ class TakerPNLForm extends Component {
     /*this.keys.basisKey = this.contracts.SPX_Oracle.methods.basis.cacheCall()*/
     this.keys.subcontractKey = this.drizzle.contracts.Book.methods.getSubcontract.cacheCall(this.state.subcontractID)
     this.keys.settleTimeKey = this.drizzle.contracts.Book.methods.lastSettleTime.cacheCall()
-    this.keys.lpChangesKey = this.drizzle.contracts.SwapMarket.methods.lpChanges.cacheCall(this.state.makerAddress)
   }
 
   handleInputChange(event) {
@@ -139,10 +138,6 @@ class TakerPNLForm extends Component {
       ethPrice = this.state.finalEthPrice;
     }
 
-    var lpChangeAddress;
-    if (this.keys.lpChangesKey in this.props.contracts.SwapMarket.lpChanges)
-      lpChangeAddress = this.props.contracts.SwapMarket.lpChanges[this.keys.lpChangesKey].value
-
     var assetPastWeek;
     if (this.assetPastKey in this.props.contracts.MultiOracle.getPastPrices)
       assetPastWeek = this.props.contracts.MultiOracle.getPastPrices[this.assetPastKey].value;
@@ -157,7 +152,6 @@ class TakerPNLForm extends Component {
           assetWeek={assetPastWeek} ethWeek={ethPastWeek}
           assetPrice={assetPrice} ethPrice={ethPrice}
           settleTime={lastSettleTime}
-          lpChangeAddress={lpChangeAddress}
           lp={this.state.makerAddress} id={this.state.subcontractID} />
         <br/>
         <form className="pure-form pure-form-stacked">

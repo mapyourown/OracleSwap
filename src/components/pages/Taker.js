@@ -13,6 +13,7 @@ import { D} from '../basics/Colors'
 import {autoBind} from 'react-extras'
 import Triangle from '../basics/Triangle'
 import SubcontractRow from '../blocks/SubcontractRow.js'
+import DrizzleSubcontractRow from '../blocks/DrizzleSubcontractRow.js'
 import TruncatedAddress from '../basics/TruncatedAddress.js'
 
 class TakerInfo extends Component {
@@ -58,6 +59,8 @@ class TakerInfo extends Component {
     this.contracts = context.drizzle.contracts
     this.drizzle = context.drizzle
 
+    this.takeKeys = {}
+
     this.state = {
       contractID: 1,
 
@@ -94,7 +97,14 @@ class TakerInfo extends Component {
   }
   
   openSubcontract(id) {
-    console.log("Opened subcontract", id)
+      console.log("Opened subcontract", id)
+      
+      const lp = this.takeKeys[id]['lp']
+      console.log(this.takeKeys)
+      console.log(lp)
+      const url = '/' + this.currentContract + '/lp/'
+       + lp + '/subcontract/' + id;
+      window.open(url, '_blank');
   }
 
   componentDidMount() {
@@ -135,11 +145,49 @@ class TakerInfo extends Component {
     this.setState({takerContracts: contracts})
   }
 
+  getAllTakes() {
+    const web3 = this.context.drizzle.web3
+    const swap = this.drizzle.contracts[this.contractDict[this.currentContract]]
+    const contractweb3 = new web3.eth.Contract(swap.abi, swap.address);
+    var takes = {};
+    contractweb3.getPastEvents(
+      'OrderTaken', 
+      {
+        filter: {taker: this.currentTaker},
+        fromBlock: 0,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        takes[element.returnValues.id] =
+        {
+          "data": this.contracts[this.contractDict[this.currentContract]].methods.getSubcontractData.cacheCall(element.returnValues.lp, element.returnValues.id),
+          "status": this.contracts[this.contractDict[this.currentContract]].methods.getSubcontractStatus.cacheCall(element.returnValues.lp, element.returnValues.id),
+          "lp": element.returnValues.lp
+        }
+      }, this);
+      this.takeKeys = takes
+    }.bind(this));
+  }
+
   findValues(id) {
     this.lookupName(id)
+    this.getAllTakes()
   }
 
   render() {
+
+    let subcontracts = {}
+    Object.keys(this.takeKeys).forEach(function(id) {
+      if (this.takeKeys[id]['data'] in this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData &&
+        this.takeKeys[id]['status'] in this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus)
+      {
+        let data = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData[this.takeKeys[id]['data']].value
+        let status = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus[this.takeKeys[id]['status']].value
+        //subcontracts[id] = {data: data, status: status}
+        subcontracts[id] = {...data, ...status}
+      }
+    }, this);
 
     return (
         <Split
@@ -162,17 +210,18 @@ class TakerInfo extends Component {
             
         <Box mt="36px" mx="30px">
             <Box>
-                <Triangle margin="15px" scale={1.8} color="#D55757" rotation="180deg"/> <Text>Your position</Text>
+                <Triangle margin="15px" scale={1.8} color="#D55757" rotation="180deg"/> <Text>All taker positions</Text>
                 <Box
-                mt="40px"
-                style={{
-                    borderTop: `thin solid ${D}`
-                }}>
-                    {this.state.subcontracts.map((subcontract, index) =>
-                        <SubcontractRow
+                  mt="20px"
+                  style={{
+                      borderTop: `thin solid ${D}`
+                  }}>
+                    {Object.keys(subcontracts).map((id, index) =>
+                        <DrizzleSubcontractRow
                         key={index}
-                        onOpenDetail={() => this.openSubcontract("0x8976a846ef2b46b07af60d744f7bb120e82666f2")}
-                        fields={subcontract}/>
+                        onOpenDetail={() => this.openSubcontract(id)}
+                        id = {id}
+                        fields={subcontracts[id]}/>
                     )}
                 </Box>
             </Box>

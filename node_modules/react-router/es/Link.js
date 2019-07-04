@@ -56,7 +56,8 @@ var Link = createReactClass({
     activeClassName: string,
     onlyActiveOnIndex: bool.isRequired,
     onClick: func,
-    target: string
+    target: string,
+    innerRef: oneOfType([string, func])
   },
 
   getDefaultProps: function getDefaultProps() {
@@ -90,7 +91,8 @@ var Link = createReactClass({
         activeClassName = _props.activeClassName,
         activeStyle = _props.activeStyle,
         onlyActiveOnIndex = _props.onlyActiveOnIndex,
-        props = _objectWithoutProperties(_props, ['to', 'activeClassName', 'activeStyle', 'onlyActiveOnIndex']);
+        innerRef = _props.innerRef,
+        props = _objectWithoutProperties(_props, ['to', 'activeClassName', 'activeStyle', 'onlyActiveOnIndex', 'innerRef']);
 
     // Ignore if rendered outside the context of router to simplify unit testing.
 
@@ -101,7 +103,7 @@ var Link = createReactClass({
     if (router) {
       // If user does not specify a `to` prop, return an empty anchor tag.
       if (!to) {
-        return React.createElement('a', props);
+        return React.createElement('a', _extends({}, props, { ref: innerRef }));
       }
 
       var toLocation = resolveToLocation(to, router);
@@ -122,7 +124,7 @@ var Link = createReactClass({
       }
     }
 
-    return React.createElement('a', _extends({}, props, { onClick: this.handleClick }));
+    return React.createElement('a', _extends({}, props, { onClick: this.handleClick, ref: innerRef }));
   }
 });
 
