@@ -60,7 +60,7 @@ contract ('AssetSwap', function (accounts) {
 		//console.log('script admin', admin);
 	});
 
-	it ("Should set up the first maker with 900 ETH OpenBalance", async function () {
+	it ("Should set up the first maker with 2000 ETH OpenBalance", async function () {
 		let makeAmount = web3.toWei(2000, 'ether'); // in range from 11 to 25 ETH
 		let bookTx = await swap.createBook(10, {from: maker});
 		let makeTx = await swap.lpFund(maker, {from: maker, value: makeAmount});
@@ -127,7 +127,6 @@ contract ('AssetSwap', function (accounts) {
 	});
 
 	it ("Should settle the maker", async function () {
-		let lengths = await swap.checkLengthDEBUG(maker);
 		//console.log(lengths);
 		let settleTx = await swap.settle(maker, {from: admin});
 		gasCosts(settleTx, `Settle with $(NUM_TAKERS) takers`);
