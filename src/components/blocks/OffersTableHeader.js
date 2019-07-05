@@ -1,6 +1,6 @@
-import {A, C, D} from '../basics/Colors'
+import {D} from '../basics/Colors'
 import {Box, Flex} from '@rebass/grid'
-import React, {useState} from 'react'
+import React from 'react'
 import Text from '../basics/Text'
 import Triangle from '../basics/Triangle'
 import Styled from 'styled-components'
