@@ -115,6 +115,8 @@ class SubcontractInfo extends Component {
       chartSymbol: "SPX500USD"
     }
 
+    this.isETHDenominated = 0
+
     this.priceHistory = {
       0:[]
     }
@@ -232,7 +234,7 @@ class SubcontractInfo extends Component {
   }
 
   getWithdrawalBalance() {
-    this.balanceKey = this.contracts[this.contractDict[this.currentContract]].methods.withdrawBalances.cacheCall(this.currentLP)
+    this.balanceKey = this.contracts[this.contractDict[this.currentContract]].methods.withdrawBalances.cacheCall(this.props.accounts[0])
   }
 
   getLongAndShortRates() {
@@ -243,6 +245,12 @@ class SubcontractInfo extends Component {
   getLeverageRatio() {
     //console.log(this.contracts[this.contractDict[id]])
     this.leverageKey = this.contracts[this.contractDict[this.currentContract]].methods.leverageRatio.cacheCall()
+  }
+
+  withdrawBalance() {
+      const {withdrawalBalance} = this.state
+      console.log("Balance withdrawal requested", withdrawalBalance)
+      this.contracts[this.contractDict[this.currentContract]].methods.withdrawBalance.cacheSend({from: this.props.accounts[0]});
   }
 
   getOracleLogs(id) {
@@ -299,6 +307,10 @@ class SubcontractInfo extends Component {
     }.bind(this));
   }
 
+  findIfEthDenominated() {
+    this.EthDenomKey = this.contracts[this.contractDict[this.currentContract]].methods.isETHDenominated.cacheCall()
+  }
+
   findValues(id) {
     this.lookupName(id)
     this.getBasis(id)
@@ -306,6 +318,7 @@ class SubcontractInfo extends Component {
     this.getOracleLogs(this.asset_id)
     this.getSettleLogs(0)
     this.getSettleLogs(this.asset_id)
+    this.findIfEthDenominated()
     this.getSubcontractInfo()
     this.getWithdrawalBalance()
     this.getLongAndShortRates()
@@ -324,16 +337,17 @@ class SubcontractInfo extends Component {
     ethFinal,
     assetStart,
     assetFinal,
+    fundingRate,
     marginRate,
     requiredMargin,
     leverageRatio,
-    basis,
+    isEthDenom,
     side) {
   var leveragedEth = requiredMargin * leverageRatio / 1e6
   var ethRatio = ethFinal / ethStart
   var assetRatio = assetFinal / assetStart
 
-  var CFDReturn = assetRatio - 1 - basis/1e4
+  var CFDReturn = assetRatio - 1 - fundingRate/1e4
 
   var lpPNL
   console.log(assetRatio)
@@ -378,6 +392,11 @@ class SubcontractInfo extends Component {
       bookData = this.props.contracts[this.contractDict[this.currentContract]].getBookData[this.bookDataKey].value
     }
 
+    let isEthDenom = false;
+    if (this.EthDenomKey in this.props.contracts[this.contractDict[this.currentContract]].isETHDenominated)
+    {
+      isEthDenom = this.props.contracts[this.contractDict[this.currentContract]].isETHDenominated[this.EthDenomKey].value
+    }
 
     let subkdata = {
       0: "0",
@@ -412,6 +431,7 @@ class SubcontractInfo extends Component {
     if (this.balanceKey in this.props.contracts[this.contractDict[this.currentContract]].withdrawBalances)
     {
       balance = this.props.contracts[this.contractDict[this.currentContract]].withdrawBalances[this.balanceKey].value
+      console.log(balance)
     }
 
     let longRate = 0;
@@ -423,7 +443,7 @@ class SubcontractInfo extends Component {
     let shortRate = 0;
     if (this.shortKey in this.props.contracts[this.contractDict[this.currentContract]].takerShortRate)
     {
-      longRate = this.props.contracts[this.contractDict[this.currentContract]].takerShortRate[this.shortKey].value
+      shortRate = this.props.contracts[this.contractDict[this.currentContract]].takerShortRate[this.shortKey].value
     }
 
     let leverageRatio = 0;
@@ -438,7 +458,9 @@ class SubcontractInfo extends Component {
         priceColumns = this.priceHistory[this.asset_id].map((val, index) => [val.blockNum, this.priceHistory[0][index].price/1e6, val.price/1e6])
     }
 
-
+    //var rate;
+    //rate = !subkdata.side ? longRate/1e4 : shortRate/1e4
+    //var FINAL_PNL = this.calculatePNL(ethStart, this.state.customFinalPrice, assetStart, this.state.customFinalPrice1, rate, )
 
     return (
         <Split
@@ -458,6 +480,7 @@ class SubcontractInfo extends Component {
                 }}>
                     <TruncatedAddress label="LP Address" addr={this.currentLP} start="8" end="6" transform="uppercase" spacing="1px"/>
                     <Box mr="30px"><LabeledText label="Taker Margin" big text={subkdata.takerMargin/1e18 + " Ξ"} spacing="1px"/></Box>
+                    <Box mr="30px"><LabeledText label="Can Be Redeemed" big text={subkdata.toDelete ? "Yes" : "No"} spacing="1px"/></Box>
                 </Box>
                 
                 <Flex
