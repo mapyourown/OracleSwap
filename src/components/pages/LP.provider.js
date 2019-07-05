@@ -546,7 +546,6 @@ class BookInfo extends Component {
         let data = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractData[this.takekeys[id]['data']].value
         let status = this.props.contracts[this.contractDict[this.currentContract]].getSubcontractStatus[this.takekeys[id]['status']].value
         //subcontracts[id] = {data: data, status: status}
-        console.log(data)
         if (data.reqMargin != 0)
         {
           subcontracts[id] = {...data, ...status}

@@ -431,7 +431,6 @@ class SubcontractInfo extends Component {
     if (this.balanceKey in this.props.contracts[this.contractDict[this.currentContract]].withdrawBalances)
     {
       balance = this.props.contracts[this.contractDict[this.currentContract]].withdrawBalances[this.balanceKey].value
-      console.log(balance)
     }
 
     let longRate = 0;
