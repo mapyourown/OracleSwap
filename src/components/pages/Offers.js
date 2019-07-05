@@ -12,7 +12,6 @@ import IndicatorB from '../basics/IndicatorB'
 import {autoBind} from 'react-extras'
 import DrizzleContract from '../blocks/DrizzleContract'
 import Triangle from '../basics/Triangle.js'
-import Input from '../basics/Input'
 import Button from '../basics/Button'
 import OffersTable from '../blocks/OffersTable.js';
 import Form from '../basics/Form.js'
@@ -118,7 +117,6 @@ class Offers extends Component {
         ],
         
         underlayingAsset: "ETH",
-        basis: "0.00%",
         leverage: 0,
         
         LPOpenAmount: 12,
@@ -397,7 +395,7 @@ class Offers extends Component {
                     </Flex>
                 </Flex>
                 <Flex mt="15px">
-                    <Form onChange={this.setMinRM} value={this.state.minRM} onSubmit={this.createBook} mb="10px" justifyContent="space-between" buttonWidth="95px"  label="Create A Book" inputWidth="280px" placeholder="Set RM" buttonLabel="Add"/>
+                    <Form onChange={this.setMinRM} value={this.state.minRM} onSubmit={this.createBook} mb="10px" justifyContent="space-between" buttonWidth="95px"  label="Create A Book" inputWidth="280px" placeholder="Set RM" buttonLabel="Create"/>
                 </Flex>
                 <Flex mt="15px">
                     <Box mr="15px"><Text size="15px" weight="400" color={C}>Margin Rates</Text></Box>
