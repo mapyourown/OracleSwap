@@ -480,7 +480,7 @@ class SubcontractInfo extends Component {
                 }}>
                     <TruncatedAddress label="LP Address" addr={this.currentLP} start="8" end="6" transform="uppercase" spacing="1px"/>
                     <Box mr="30px"><LabeledText label="Taker Margin" big text={subkdata.takerMargin/1e18 + " Ξ"} spacing="1px"/></Box>
-                    <Box mr="30px"><LabeledText label="Can Be Redeemed" big text={subkdata.toDelete ? "Yes" : "No"} spacing="1px"/></Box>
+                    <Box mr="30px"><LabeledText label="Can Be Redeemed" big text={subkstatus.toDelete ? "Yes" : "No"} spacing="1px"/></Box>
                 </Box>
                 
                 <Flex
@@ -534,6 +534,9 @@ class SubcontractInfo extends Component {
         }>
         
             <Flex mt="30px" mx="25px" justifyContent="space-between">
+                <Box>
+                    <IndicatorB size="15px" label="Currently Selected Contract: " value={this.currentContract}/>
+                </Box>
                 <Flex>
                     <IndicatorB size="15px" label="Taker Side" value={!subkdata.side ? "Long" : "Short"}/>
                     <IndicatorB ml="20px" size="15px" label="Financing Rate" value={!subkdata.side ? longRate/1e4 + "%" : shortRate/1e4 + "%"}/>
