@@ -553,7 +553,7 @@ class SubcontractInfo extends Component {
                   <Flex mt="20px">  
                       <Flex>
                         <Input onChange={({target: {value}}) => this.setCustomFinalPrice(value)} mr="10px" label="ETH" value={this.state.customFinalPrice}/>
-                        <Input onChange={({target: {value}}) => this.setCustomFinalPrice1(value)} mr="10px" label={this.currentSubcontract} value={this.state.customFinalPrice1}/>
+                        <Input onChange={({target: {value}}) => this.setCustomFinalPrice1(value)} mr="10px" label={this.assetName[this.asset_id]} value={this.state.customFinalPrice1}/>
                         <Button onClick={this.calculateCustomFinalPrices}>Submit</Button>
                       </Flex>
                       <Box mt="4px" ml="20px">{this.state.speculativeFinalProfit ? <Text size="15px" color={C}>Your speculative final profit would be <Text weight="bold" color={C}>{this.state.speculativeFinalProfit}</Text></Text> : null}</Box>
