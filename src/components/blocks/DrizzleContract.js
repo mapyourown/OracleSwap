@@ -220,7 +220,7 @@ class DrizzleContract extends Component {
                 px="10px"
                 pb="10px">
                     <Box width={1}>
-                        <Box><Text color={A} size="11px">Lev. Ratio</Text></Box>
+                        <Box><Text color={A} size="16px">Lev. Ratio</Text></Box>
                         <Box><Text color={A} size="16px">{leverageRatio/100}</Text></Box>
                     </Box>
                 </Flex>
@@ -232,10 +232,10 @@ class DrizzleContract extends Component {
                     borderBottom: `thin solid ${E}`
                 }}>
                     <Box width={1/2}>
-                        <Text color={A} size="10px">Long</Text> <Text color={A} size="10px" underline={E}>{totalLong/1e18} Ξ</Text>
+                        <Text color={A} size="14px">Long</Text> <Text color={A} size="14px" underline={E}>{totalLong/1e18} Ξ</Text>
                     </Box>
                     <Box width={1/2}>
-                        <Text color={A} size="10px">Short</Text> <Text color={A} size="10px" underline={E}>{totalShort/1e18} Ξ</Text>
+                        <Text color={A} size="14px">Short</Text> <Text color={A} size="14px" underline={E}>{totalShort/1e18} Ξ</Text>
                     </Box>
                 </Flex>
               </Box>
@@ -255,7 +255,7 @@ class DrizzleContract extends Component {
                     style={{
                         borderBottom: `thin solid ${E}`
                     }}>
-                        <Triangle margin="7px" color="#70B43F"/> <a href={"/" + this.contractDict2[this.asset_id] + "/offers"} ><Text color={A} size="13px">Make or Take an offer</Text></a>
+                        <Triangle margin="7px" color="#70B43F"/> <a href={"/" + this.contractDict2[this.asset_id] + "/offers"} ><Text color={A} size="15px">Make or Take an offer</Text></a>
                     </Box>
                     <Box
                     onClick={ this.props.onClickPositions}
@@ -264,7 +264,7 @@ class DrizzleContract extends Component {
                     pb="10px">
                         <Triangle margin="7px" color="#D55757" rotation="180deg"/> 
                         <a href={"/" + this.contractDict2[this.asset_id] +"/taker/" + this.props.accounts[0]} >
-                          <Text color={A} size="13px">View My Taken Positions</Text>
+                          <Text color={A} size="15xpx">View My Positions (Taker Only)</Text>
                         </a>
                     </Box>
                 </Box>

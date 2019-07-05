@@ -52,8 +52,16 @@ class SubcontractInfo extends Component {
       "BTCETH": "BTCETHSwap"
     }
 
+    this.idDict = {
+      "ETHSwap": 0,
+      "SPXSwap": 1,
+      "BTCSwap": 2,
+      "BTCETHSwap": 3
+    }
+
     this.currentContract = this.props.routeParams.contract;
     this.currentLP = this.props.routeParams.address;
+    this.asset_id = this.idDict[this.contractDict[this.currentContract]]
     this.currentSubcontract = this.props.routeParams.id;
     console.log(this.currentContract)
     console.log(this.currentSubcontract)
@@ -81,7 +89,7 @@ class SubcontractInfo extends Component {
       withdrawAmount: '',
       customFinalPrice: null,
       customFinalPrice1: null,
-      projectedPnl: -6.54828282,
+      projectedPnl: 0,
 
       assetFinal: '',
       ethFinal: '',
@@ -107,6 +115,22 @@ class SubcontractInfo extends Component {
       chartSymbol: "SPX500USD"
     }
 
+    this.priceHistory = {
+      0:[]
+    }
+    this.priceHistory[this.asset_id] =[]
+    this.settleHistory = {
+      0:[]
+    }
+    this.settleHistory[this.asset_id] =[]
+
+    this.assetName = {
+      0: 'ETH',
+      1: 'SPX',
+      2: 'BTC',
+      3: 'BTCETH'
+    }
+
   }
   
   PlayerCancel(margin) {
@@ -119,6 +143,12 @@ class SubcontractInfo extends Component {
     console.log("Contract LP burn")
     this.contracts[this.contractDict[this.currentContract]].methods.playerBurn.cacheSend(
       this.currentLP, this.currentSubcontract, {from: this.props.accounts[0], value: margin *  0.25});
+  }
+
+  redeem() {
+    console.log("Redemption")
+    this.contracts[this.contractDict[this.currentContract]].methods.redeem.cacheSend(
+      this.currentLP, this.currentSubcontract, {from: this.props.accounts[0]});
   }
   
   setNewPlayerAddress(value) {
@@ -215,9 +245,67 @@ class SubcontractInfo extends Component {
     this.leverageKey = this.contracts[this.contractDict[this.currentContract]].methods.leverageRatio.cacheCall()
   }
 
+  getOracleLogs(id) {
+    const web3 = this.context.drizzle.web3
+    const oracle = this.drizzle.contracts.Oracle
+    const contractweb3 = new web3.eth.Contract(oracle.abi, oracle.address);
+    var pricedata = [];
+    contractweb3.getPastEvents(
+      'PriceUpdated', 
+      {
+        filter: {id: id},
+        fromBlock: 0,//block_number - 6600 * 7,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        if (element.returnValues.id == id)
+        {
+          pricedata.push({
+            blockNum: element.blockNumber, 
+            price: element.returnValues.price, 
+            time: element.returnValues.timestamp
+          })
+        }
+      }, this);
+      this.priceHistory[id] = pricedata.slice(-6)
+    }.bind(this));
+  }
+
+  getSettleLogs(id) {
+    const web3 = this.context.drizzle.web3
+    const oracle = this.drizzle.contracts.Oracle
+    const contractweb3 = new web3.eth.Contract(oracle.abi, oracle.address);
+    var pricedata = [];
+    contractweb3.getPastEvents(
+      'SettlePrice', 
+      {
+        filter: {id: id},
+        fromBlock: 0,//block_number - 6600 * 7,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        if (element.returnValues.id == id)
+        {
+          pricedata.push({
+            blockNum: element.blockNumber, 
+            price: element.returnValues.price, 
+            time: element.returnValues.timestamp
+          })
+        }
+      }, this);
+      this.settleHistory[id] = pricedata
+    }.bind(this));
+  }
+
   findValues(id) {
     this.lookupName(id)
     this.getBasis(id)
+    this.getOracleLogs(0)
+    this.getOracleLogs(this.asset_id)
+    this.getSettleLogs(0)
+    this.getSettleLogs(this.asset_id)
     this.getSubcontractInfo()
     this.getWithdrawalBalance()
     this.getLongAndShortRates()
@@ -311,6 +399,11 @@ class SubcontractInfo extends Component {
       leverageRatio = this.props.contracts[this.contractDict[this.currentContract]].leverageRatio[this.leverageKey].value
     }
 
+    let priceColumns = [];
+    if (this.priceHistory[0].length !== 0 && this.priceHistory[this.asset_id].length !== 0)
+    {
+        priceColumns = this.priceHistory[this.asset_id].map((val, index) => [val.blockNum, this.priceHistory[0][index].price/1e6, val.price/1e6])
+    }
 
     return (
         <Split
@@ -347,8 +440,11 @@ class SubcontractInfo extends Component {
                         <Box mr="20px">
                             <Button width="120px" bgColor={H} onClick={() => this.PlayerBurn(subkdata.reqMargin)}><Flex justifyContent="center"><Box mr="20px"><WarningSign width="13"/></Box> <Box>Burn</Box></Flex></Button>
                         </Box>
-                        <Box>
+                        <Box mr="20px">
                             <Button width="120px" bgColor={I} onClick={() => this.PlayerCancel(subkdata.reqMargin)}><Flex justifyContent="center"><Box>Cancel</Box></Flex></Button>
+                        </Box>
+                        <Box>
+                            <Button width="120px" bgColor={I} onClick={() => this.redeem()}><Flex justifyContent="center"><Box>Redeem</Box></Flex></Button>
                         </Box>
                     </Flex>
                 </Box>
@@ -361,8 +457,11 @@ class SubcontractInfo extends Component {
                         <Box mr="20px">
                             <Button width="120px" bgColor={H} onClick={() => this.PlayerBurn(subkdata.reqMargin)}><Flex justifyContent="center"><Box mr="20px"><WarningSign width="13"/></Box> <Box>Burn</Box></Flex></Button>
                         </Box>
-                        <Box>
+                        <Box mr="20px">
                             <Button width="120px" bgColor={I} onClick={() => this.PlayerCancel(subkdata.reqMargin)}><Flex justifyContent="center"><Box>Cancel</Box></Flex></Button>
+                        </Box>
+                        <Box>
+                            <Button width="120px" bgColor={I} onClick={() => this.redeem()}><Flex justifyContent="center"><Box>Redeem</Box></Flex></Button>
                         </Box>
                     </Flex>
                     <Form mb="10px" value={this.state.newExtraMargin} onChange={this.setNewExtraMargin} onSubmit={this.changeNewExtraMargin} justifyContent="space-between" buttonWidth="105px"  label="Add margin" inputWidth="270px" placeholder="Set amount" buttonLabel="Add"/>
@@ -392,11 +491,16 @@ class SubcontractInfo extends Component {
                 <Box>
                     <Text weight="bold">Oracle Prices</Text>
                     <Flex>
-                        <Box width={0.3}>
+                        <Box>
                             <TableA
                             mt="20px"
-                            columns={this.state.oraclePrices.columnNames}
-                            rows={this.state.oraclePrices.rows}/>
+                            mr="20px"
+                            columns={[
+                                "ETH", this.assetName[this.asset_id]
+                            ]}
+                            rows={
+                                priceColumns
+                              }/>
                         </Box>
                         <Box width={0.7}>
                             <Chart
@@ -422,7 +526,7 @@ class SubcontractInfo extends Component {
                 </Box>
                 <Flex
                 pt="10px">
-                    <Box mr="30px"><LabeledText label="Your projected PNL" text={Math.floor(this.state.projectedPnl*10000)/10000 + " Ξ"} spacing="1px"/></Box>
+                    <Box mr="30px"><LabeledText label="Your projected PNL" size="14px" text={Math.floor(this.state.projectedPnl*10000)/10000 + " Ξ"} spacing="1px"/></Box>
                 </Flex>
 
             </Box>

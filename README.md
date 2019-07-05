@@ -2,7 +2,14 @@
 
 This project contains everything you need to run the SmartSwap front end locally.
 
-## Installation - ETH Blockchain
+## Installation - Front End Only
+
+1. Clone the OracleSwap repository.
+
+2. Start the server
+    ```javascript
+    npm run start
+    ```
 
 Node.js is required to run the server.
 
@@ -38,7 +45,7 @@ Node.js is required to run the server.
     ```
 6. Verfify the front end is running at http://localhost:3000 in browser
 
-## Testing the Contract
+## Testing the Contracts
 
 Start the ganache-cli test chain
 

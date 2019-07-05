@@ -36,7 +36,7 @@ contract AssetSwap {
 
     event OrderTaken(address lp, address indexed taker, bytes32 id);
     event FirstPrice(address lp, uint8 startDay);
-    event Burn(address lp, bytes32 id, address sender);
+    event Burn(address lp, bytes32 id, address sender, uint time);
     event RatesUpdated(int16 target, int16 basis);
     event LPFundedMargin(address lp, uint newLPMargin);
     
@@ -177,7 +177,7 @@ contract AssetSwap {
         uint fee = b.burn(id, msg.sender, msg.value);
         burnFees = burnFees.add(fee);
         withdrawBalances[msg.sender] = withdrawBalances[msg.sender].add(msg.value - fee);
-        emit Burn(lp, id, msg.sender);
+        emit Burn(lp, id, msg.sender, block.timestamp);
 
     }
     
@@ -214,6 +214,7 @@ contract AssetSwap {
         public
         payable
     {
+        require(msg.sender == lp);
         require(books[lp] != 0x0);
         Book b = Book(books[lp]);
         b.fundlpMargin.value(msg.value)();

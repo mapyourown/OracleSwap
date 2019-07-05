@@ -100,6 +100,7 @@ class Burns extends Component {
             blockNum: element.blockNumber, 
             lp: element.returnValues.lp, 
             id: element.returnValues.id,
+            timestamp: element.returnValues.time,
             sender: element.returnValues.sender})
       }, this);
       this.burnHistory.concat(burns)
@@ -123,8 +124,8 @@ class Burns extends Component {
                   <Text size="15px" weight="200">Liquidity Provider: {item.lp}</Text><br/>
                   <Text size="15px" weight="200">Subcontract ID: {item.id}</Text><br/>
                   <Text size="15px" weight="200">Burner: {item.sender}</Text><br/>
+                  <Text size="15px" weight="200">Time: {item.timestamp}</Text><br/>
                 </div>
-                  
               )}
           </div>
       )

@@ -61,6 +61,12 @@ class BookInfo extends Component {
       "BTCSwap": 2,
       "BTCETHSwap": 3
     }
+    this.assetName = {
+      0: 'ETH',
+      1: 'SPX',
+      2: 'BTC',
+      3: 'BTCETH'
+    }
 
 
 
@@ -149,6 +155,14 @@ class BookInfo extends Component {
 
     this.assetPastPricesKeys = {}
     this.ethPastPricesKeys = {}
+    this.priceHistory = {
+      0:[]
+    }
+    this.priceHistory[this.asset_id] =[]
+    this.settleHistory = {
+      0:[]
+    }
+    this.settleHistory[this.asset_id] =[]
     this.takekeys = {}
   }
   
@@ -337,7 +351,7 @@ class BookInfo extends Component {
       }
     ).then(function(events) { 
       events.forEach(function(element) {
-        if (element.returnValues.lp = this.currentLP)
+        if (element.returnValues.lp.toLowerCase() === this.currentLP.toLowerCase())
         {
           takes[element.returnValues.id] =
             {
@@ -375,6 +389,60 @@ class BookInfo extends Component {
     }
   }
 
+  getOracleLogs(id) {
+    const web3 = this.context.drizzle.web3
+    const oracle = this.drizzle.contracts.Oracle
+    const contractweb3 = new web3.eth.Contract(oracle.abi, oracle.address);
+    var pricedata = [];
+    contractweb3.getPastEvents(
+      'PriceUpdated', 
+      {
+        filter: {id: id},
+        fromBlock: 0,//block_number - 6600 * 7,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        if (element.returnValues.id == id)
+        {
+          pricedata.push({
+            blockNum: element.blockNumber, 
+            price: element.returnValues.price, 
+            time: element.returnValues.timestamp
+          })
+        }
+      }, this);
+      this.priceHistory[id] = pricedata.slice(-6)
+    }.bind(this));
+  }
+
+  getSettleLogs(id) {
+    const web3 = this.context.drizzle.web3
+    const oracle = this.drizzle.contracts.Oracle
+    const contractweb3 = new web3.eth.Contract(oracle.abi, oracle.address);
+    var pricedata = [];
+    contractweb3.getPastEvents(
+      'SettlePrice', 
+      {
+        filter: {id: id},
+        fromBlock: 0,//block_number - 6600 * 7,
+        toBlock: 'latest'
+      }
+    ).then(function(events) { 
+      events.forEach(function(element) {
+        if (element.returnValues.id == id)
+        {
+          pricedata.push({
+            blockNum: element.blockNumber, 
+            price: element.returnValues.price, 
+            time: element.returnValues.timestamp
+          })
+        }
+      }, this);
+      this.settleHistory[id] = pricedata
+    }.bind(this));
+  }
+
   findValues(id) {
     this.getBookData()
     this.getLongAndShortRates()
@@ -388,6 +456,10 @@ class BookInfo extends Component {
     this.calculateTotalLongs(id)
     this.calculateTotalSubcontracts(id)
     this.getLeverage(id)
+    this.getOracleLogs(0)
+    this.getOracleLogs(this.asset_id)
+    this.getSettleLogs(0)
+    this.getSettleLogs(this.asset_id)
     this.getLPList(id)
   }
 
@@ -440,14 +512,14 @@ class BookInfo extends Component {
     }*/
 
     let assetPastPrices = []
-    if (Object.keys(this.assetPastPricesKeys).length !== 0)
+    /*if (Object.keys(this.assetPastPricesKeys).length !== 0)
     {
       if (Object.keys(this.assetPastPricesKeys).reduce((status, item) => status && this.assetPastPricesKeys[item] in this.props.contracts.Oracle.lastWeekPrices))
       {
         assetPastPrices = Object.keys(this.assetPastPricesKeys).map((day) => this.props.contracts.Oracle.lastWeekPrices[this.assetPastPricesKeys[day]].value)
       } 
-    }
-    console.log(assetPastPrices)
+    }*/
+    //console.log(assetPastPrices)
 
     let ethPastPrices = []
     if (Object.keys(this.ethPastPricesKeys).length !== 0)
@@ -457,7 +529,7 @@ class BookInfo extends Component {
         ethPastPrices = Object.keys(this.ethPastPricesKeys).map((day) => this.props.contracts.Oracle.lastWeekPrices[this.ethPastPricesKeys[day]].value)
       } 
     }
-    console.log(ethPastPrices)
+    //console.log(ethPastPrices)
 
     let settleTime = 0;
     if (this.settleTimeKey in this.props.contracts.Oracle.getLastSettleTime)
@@ -478,6 +550,25 @@ class BookInfo extends Component {
       }
     }, this);
 
+    let lastAssetPrice = 0
+    let lastEthPrice = 0
+    if (this.priceHistory[this.asset_id].length !== 0)
+    {
+      lastAssetPrice = this.priceHistory[this.asset_id][this.priceHistory[this.asset_id].length - 1].price/1e6
+    }
+    if (this.priceHistory[0].length !== 0)
+    {
+      lastEthPrice = this.priceHistory[0][this.priceHistory[0].length - 1].price/1e6
+    }
+
+
+    let priceColumns = [];
+    if (this.priceHistory[0].length !== 0 && this.priceHistory[this.asset_id].length !== 0)
+    {
+        priceColumns = this.priceHistory[this.asset_id].map((val, index) => [val.blockNum, this.priceHistory[0][index].price/1e6, val.price/1e6])
+    }
+
+    console.log(subcontracts)
     
     return (
         <Split
@@ -519,7 +610,6 @@ class BookInfo extends Component {
                 pt="30px">
                     <Box mb="10px"><Text size="16px">Modify</Text></Box>
                     <Form onChange={this.setNewMargin} value={this.state.newMargin} onSubmit={this.changeNewMargin} mb="30px" justifyContent="space-between" buttonWidth="95px" label="Add margin" inputWidth="280px" placeholder="Set amount" buttonLabel="Add"/>
-                    <Form onChange={this.setMinRM} value={this.state.minRM} onSubmit={this.createBook} mb="30px" justifyContent="space-between" buttonWidth="95px" label="Create Book" inputWidth="280px" placeholder="Set min RM" buttonLabel="Create"/>
                     <Box mb="10px"><Text size="16px" justifyContent="space-between" buttonWidth="95px" >Withdraw</Text></Box>
                     <Form onChange={this.setNewMarginToWithdrawalBalance} value={this.state.newMarginToWithdrawalBalance} onSubmit={this.changeNewMarginToWithdrawalBalance} mb="20px" justifyContent="space-between" buttonWidth="95px" label="Move margin to withdrawal balance" inputWidth="280px" placeholder="Set amount" buttonLabel="Move"/>
                     <IndicatorC buttonLabel="Withdraw" onClick={this.withdrawBalance}>
@@ -550,43 +640,17 @@ class BookInfo extends Component {
                 
             <Box mt="45px" mx="30px">
                 <Box>
-                    <Text weight="bold">Oracle Past Prices</Text>
-                    <Flex>
-                        <Box width={0.3}>
-                            <TableA
-                            mt="20px"
-                            columns={[
-                                "ETH", "SPX"
-                            ]}
-                            rows={[
-                                ["Feb-01", 23.22, 34.76],
-                                ["Feb-02", 23.22, 34.76],
-                                ["Feb-03", 23.22, 34.76],
-                                ["Feb-04", 23.22, 34.76],
-                            ]}/>
-                        </Box>
-                        <Box width={0.7}>
-                            <Chart
-                            symbol="SPX500USD"
-                            toolbar_bg="rgba(0, 0, 0, 1)"
-                            theme={Themes.DARK}
-                            width="100%"
-                            height="250px"/>
-                        </Box>
-                    </Flex>
-                </Box>
-
-                <Box>
                     <Text weight="bold">Oracle Last Week History</Text>
                     <Flex>
-                        <Box width={0.3}>
+                        <Box>
                             <TableA
                             mt="20px"
+                            mr="20px"
                             columns={[
-                                "ETH", "SPX"
+                                "ETH", this.assetName[this.asset_id]
                             ]}
                             rows={
-                                ethPastPrices.map((val, index) => [index, val/1e6, assetPastPrices[index]/1e6])
+                                priceColumns
                               }/>
                         </Box>
                     </Flex>
@@ -603,9 +667,9 @@ class BookInfo extends Component {
                     </Flex>
                     <Flex
                     pt="10px">
-                        <Box mr="30px"><LabeledText label="Projected LP PNL" text={this.state.projectedLpPnl + " Ξ"} spacing="1px"/></Box>
-                        <Box mr="30px"><LabeledText label="Asset Price" text={this.state.assetPrice} spacing="1px"/></Box>
-                        <Box mr="30px"><LabeledText label="ETH Price" text={this.state.underlayingAssetPrice} spacing="1px"/></Box>
+                        <Box mr="30px"><LabeledText label="Projected LP PNL" text={0 + " Ξ"} spacing="1px"/></Box>
+                        <Box mr="30px"><LabeledText label="Asset Price" text={lastAssetPrice} spacing="1px"/></Box>
+                        <Box mr="30px"><LabeledText label="ETH Price" text={lastEthPrice} spacing="1px"/></Box>
                     </Flex>
                 </Box>
                 <Box mt="60px">

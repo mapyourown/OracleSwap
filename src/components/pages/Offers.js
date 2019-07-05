@@ -71,6 +71,7 @@ class Offers extends Component {
         reduceOpen: 0,
         newLong: 0,
         newShort: 0,
+        minRM: 0,
         lps: {},
         offers: [
             {
@@ -247,6 +248,19 @@ class Offers extends Component {
     this.setState(state => ({...state, totalSubcontracts: count}))
   }
 
+  setMinRM(value) {
+    this.setState(state => ({...state, minRM: value}))
+  } 
+
+  createBook() {
+    console.log("create book")
+    const {minRM} = this.state
+    console.log(minRM)
+    this.contracts[this.contractDict[this.currentContract]].methods.createBook.cacheSend(minRM, {
+      from: this.props.accounts[0]
+    });
+  }
+
   getBasis(id) {
     this.setState(state => ({
         ...state,
@@ -377,16 +391,17 @@ class Offers extends Component {
                 </Box>
                 <Flex mt="20px">
                     <Flex mr="30px" alignItems="center">
+
                         <Text margin="10px">Current Margin</Text> <Text underline={C}>{bookData.lpMargin} Ξ</Text>
                     </Flex>
                     <Flex>
-                        <Input label="Add" value={this.state.newBalance} onChange={({target: {value}}) => this.setNewBalance(value)} placeholder="Add amount" mr="10px"/> <Button onClick={this.addBalance}>Add balance</Button>
+                        <Input label="Create Book" onChange={this.setMinRM} value={this.state.minRM} mr="10px" placeholder="Set min RM"/><Button onClick={this.createBook}>Create Book</Button>
                     </Flex>
                 </Flex>
                 <Flex mt="15px">
                     <Box mr="15px"><Text size="15px" weight="400" color={C}>Margin Rates</Text></Box>
-                    <Box ml="10px"><Text size="15px" weight="400" color={C}>Long: {longRate}</Text></Box>
-                    <Box ml="10px"><Text size="15px" weight="400" color={C}>Short: {shortRate}</Text></Box>
+                    <Box ml="10px"><Text size="15px" weight="400" color={C}>Long: {longRate/100 + "%"}</Text></Box>
+                    <Box ml="10px"><Text size="15px" weight="400" color={C}>Short: {shortRate/100 + "%"}</Text></Box>
                 </Flex>
                 <Box mt="10px">
                     <Button onClick={this.openBook}>View your Book</Button>

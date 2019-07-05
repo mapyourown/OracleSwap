@@ -97,8 +97,8 @@ class OracleHistory extends Component {
                   {
                     this.priceHistory[id].map((event, index) =>
                       <div key={index}>
-                        <Text size="15px" weight="200">Price: {event.price/1e6}</Text><br/>
-                        <Text size="15px" weight="200">Timestamp: {event.time}</Text><br/>
+                        <Text size="15px" weight="200">Price: {(event.price/1e6).toFixed(3)} &nbsp;&nbsp;&nbsp;&nbsp; Timestamp: {event.time}</Text><br/>
+                        
                       </div>
                     )
                   }

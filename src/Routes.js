@@ -25,10 +25,4 @@ export default [
     {path: "/:contract/taker/:address", component: Taker},
     {path: "/:contract/lp/:address/subcontract/:id", component: Subcontract},
     
-    /* Others */
-    {path: "/make", component: MakerHomeContainer},
-    {path: "/lpdetails", component: LPDetailsContainer},
-    {path: "/take", component: TakerHomeContainer},
-    {path: "/oracle", component: OracleHomeContainer},
-    {path: "/admin", component: MultiOracleContainer}
 ]

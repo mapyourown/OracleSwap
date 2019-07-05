@@ -4,7 +4,7 @@ import React from 'react'
 import Styled from 'styled-components'
 
 const Table = Styled.table`
-    margin-left: 0px;
+    margin-left: -30px;
     & tr td:first-child {
         color: ${C}
     }

@@ -166,12 +166,8 @@ class Splash extends Component {
                                 <Box mr="20px"><a href={process.env.PUBLIC_URL + '/docs/OSTechAppend.pdf'} ><img role="presentation" src={TechnicalAppendixIcon}/></a></Box>
                                 <Box mt="-10px"><Text size="14px">Technical<br/>Appendix</Text></Box>
                             </Flex>
-                            <Flex flexWrap="wrap" alignItems="center" onClick={this.openCheatSpreadsheet} style={{cursor: "pointer"}}>
-                                <Box mr="20px"><a href={process.env.PUBLIC_URL + '/docs/OracleSwapData.xlsx'} ><img role="presentation" src={CheatSpreadsheetIcon}/></a></Box>
-                                <Box mt="-10px"><Text size="14px">Long Term<br/>Strategy</Text></Box>
-                            </Flex>
                             <Flex flexWrap="wrap" alignItems="center" onClick={this.openSimulationSheet} style={{cursor: "pointer"}}>
-                                <Box mr="20px"><img role="presentation" src={SimulationSheetIcon}/></Box>
+                                <Box mr="20px"><a href={process.env.PUBLIC_URL + '/docs/OracleSwapData.xlsx'} ><img role="presentation" src={SimulationSheetIcon}/></a></Box>
                                 <Box mt="-10px"><Text size="14px">Simulation<br/>Sheet</Text></Box>
                             </Flex>
                         </Flex>
@@ -185,16 +181,16 @@ class Splash extends Component {
                         <Box>
                             <Text size="20px">Oracle Price Asset History</Text>
                             <br/>
-                            <a href="/data">Download Oracle Data</a>
-                            <br/>
                             <a href="/oraclehist">View Oracle History</a>
                             <br/>
                             <a href="/burns">View Burn History</a>
                             <br/>
                             <a href="/faqs">View FAQS</a>
                             <br/>
-                            <a href="winkdex.com">View Winkdex</a>
+                            <a href="http://winkdex.com">View Winkdex</a>
                             <br/>
+                            <a href="http://github.com/lorenzobotticelli/OracleSwap">Github Project</a>
+                            <br />
                             {
                                 this.state.chartSymbols.map((symbol, index) =>
                                     <Box spacing="4px" mt="20px" key={index}>

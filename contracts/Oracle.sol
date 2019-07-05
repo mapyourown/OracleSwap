@@ -37,21 +37,24 @@ contract Oracle {
         uint indexed id,
         bytes32 name,
         uint price,
-        uint timestamp
+        uint timestamp,
+        uint8 dayNumber,
     );
 
     event SettlePrice(
         uint indexed id,
         bytes32 name,
         uint price,
-        uint timestamp
+        uint timestamp,
+        uint8 dayNumber,
     );
 
     event PriceCorrected(
         uint indexed id,
         bytes32 indexed name, 
         uint price,
-        uint timestamp
+        uint timestamp,
+        uint8 dayNumber,
     );
     
     /** Contract Constructor
@@ -91,7 +94,7 @@ contract Oracle {
         prices.push(_prices);
 
         emit AssetAdded(assets.length - 1, name, startPrice);
-        emit PriceUpdated(assets.length - 1, name, startPrice, block.timestamp);
+        emit PriceUpdated(assets.length - 1, name, startPrice, block.timestamp, asset.currentDay);
         return assets.length - 1;
     }
     
@@ -117,7 +120,7 @@ contract Oracle {
         prices[assetID][asset.currentDay] = price;
         asset.isFinalDay = finalDayStatus;
 
-        emit PriceUpdated(assetID, asset.name, price, block.timestamp);
+        emit PriceUpdated(assetID, asset.name, price, block.timestamp, asset.currentDay);
     }
     
     /** Publishes a new asset price while updating data for a new week of prices
@@ -151,8 +154,8 @@ contract Oracle {
         asset.lastSettlePriceTime = block.timestamp;
         asset.isFinalDay = false;
 
-        emit PriceUpdated(assetID, asset.name, price, block.timestamp);
-        emit SettlePrice(assetID, asset.name, price, block.timestamp);
+        emit PriceUpdated(assetID, asset.name, price, block.timestamp, asset.currentDay);
+        emit SettlePrice(assetID, asset.name, price, block.timestamp, asset.currentDay);
     }
     
     /** Quickly fix an erroneous price
@@ -168,8 +171,8 @@ contract Oracle {
         require(block.timestamp < asset.lastPriceUpdateTime + EDIT_PRICE_TIME_MAX,
             "Cannot edit the price after the time minimum has elapsed");
         prices[assetID][asset.currentDay] = newPrice;
-        emit PriceUpdated(assetID, asset.name, newPrice, block.timestamp);
-        emit PriceCorrected(assetID, asset.name, newPrice, block.timestamp);
+        emit PriceUpdated(assetID, asset.name, newPrice, block.timestamp, asset.currentDay);
+        emit PriceCorrected(assetID, asset.name, newPrice, block.timestamp, asset.currentDay);
     }
 
     /** Grant administrator priviledges to a user

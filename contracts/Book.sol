@@ -205,7 +205,7 @@ contract Book {
         subcontracts[id] = order;
         pendingContracts.push(id);
         
-        require (lpMargin > lpRequiredMargin, "Something went wrong, this take should not be allowed");
+        require (lpMargin >= lpRequiredMargin, "Something went wrong, this take should not be allowed");
 
         emit OrderTaken(taker, id, RM);
         return id;
@@ -268,7 +268,7 @@ contract Book {
 
         uint fee;
         if (sender == k.Taker && k.takerCloseDiscount)
-            fee =(k.ReqMargin * cancelFee)/3e4;
+            fee =(k.ReqMargin * cancelFee)/2e4;
         else
             fee = (k.ReqMargin * cancelFee)/1e4;
 		require(msg.value >= fee, "Insufficient cancel fee");

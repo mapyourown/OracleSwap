@@ -31,10 +31,11 @@ export default
                 <Box><LabeledText label="Subcontract ID" text={fields.bookAdress}/></Box>
             </Box>
             <Flex mt="-8px" width="calc((100% - 150px)*0.6)" justifyContent="space-between"> 
-                <Box width={5/20} mr="5px"><LabeledText big label="Req. Margin" text={fields.marginRate + " Ξ"}/></Box>
-                <Box width={4/10}><LabeledText big label="Taker Actual Margin" text={fields.takerMargin + " Ξ"}/></Box>
+                <Box width={5/20} mr="5px"><LabeledText big label="Req. Margin" text={fields.reqMargin + " Ξ"}/></Box>
+                <Box width={4/10}><LabeledText big label="Taker Margin" text={fields.takerMargin + " Ξ"}/></Box>
                 <Box width={3/20}><LabeledText big label="Canceled" text={fields.canceled ? "Yes" : "No"}/></Box>
                 <Box width={3/20}><LabeledText big label="Burned" text={fields.burned ? "Yes" : "No"}/></Box>
                 <Box width={3/20}><LabeledText big label="LP Side" text={fields.burned ? "Long" : "Short"}/></Box>
+                <Box width={3/20}><LabeledText big label="Close Fee" text={fields.reqMargin ? "Long" : "Short"}/></Box>
             </Flex>
         </Flex>
