@@ -46,7 +46,7 @@ class Splash extends Component {
                 id: 3
             }
         ],
-        chartSymbols: ["SP:SPX/CBOE:VIX", "BTCUSD"]
+        chartSymbols: ["SP:SPX", "BTCUSD"]
     }
 
 
