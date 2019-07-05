@@ -320,6 +320,39 @@ class SubcontractInfo extends Component {
       this.setState(state => ({...state, customFinalPrice1: value}))
   }
 
+  calculatePNL( ethStart,
+    ethFinal,
+    assetStart,
+    assetFinal,
+    marginRate,
+    requiredMargin,
+    leverageRatio,
+    basis,
+    side) {
+  var leveragedEth = requiredMargin * leverageRatio / 1e6
+  var ethRatio = ethFinal / ethStart
+  var assetRatio = assetFinal / assetStart
+
+  var CFDReturn = assetRatio - 1 - basis/1e4
+
+  var lpPNL
+  console.log(assetRatio)
+  console.log(leveragedEth)
+  console.log(ethRatio)
+  console.log(CFDReturn)
+  if (side) // maker is long taker gets Short Rate
+    lpPNL = leveragedEth * (CFDReturn + marginRate/1e4) / ethRatio
+  else
+    lpPNL = leveragedEth * ((-1.0 * CFDReturn) + marginRate/1e4) / ethRatio
+
+  if (lpPNL > requiredMargin)
+      lpPNL = requiredMargin
+    if (lpPNL < -1.0 * requiredMargin)
+      lpPNL = -1.0 * requiredMargin
+
+  return lpPNL
+}
+
   render() {
 
     let bookData = {
@@ -404,6 +437,8 @@ class SubcontractInfo extends Component {
     {
         priceColumns = this.priceHistory[this.asset_id].map((val, index) => [val.blockNum, this.priceHistory[0][index].price/1e6, val.price/1e6])
     }
+
+
 
     return (
         <Split
@@ -518,7 +553,7 @@ class SubcontractInfo extends Component {
                   <Flex mt="20px">  
                       <Flex>
                         <Input onChange={({target: {value}}) => this.setCustomFinalPrice(value)} mr="10px" label="ETH" value={this.state.customFinalPrice}/>
-                        <Input onChange={({target: {value}}) => this.setCustomFinalPrice1(value)} mr="10px" label="SPX" value={this.state.customFinalPrice1}/>
+                        <Input onChange={({target: {value}}) => this.setCustomFinalPrice1(value)} mr="10px" label={this.currentSubcontract} value={this.state.customFinalPrice1}/>
                         <Button onClick={this.calculateCustomFinalPrices}>Submit</Button>
                       </Flex>
                       <Box mt="4px" ml="20px">{this.state.speculativeFinalProfit ? <Text size="15px" color={C}>Your speculative final profit would be <Text weight="bold" color={C}>{this.state.speculativeFinalProfit}</Text></Text> : null}</Box>
