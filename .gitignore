@@ -1,15 +1,21 @@
 
+# Ignore mac filesystem hidden file
+.DS_Store
+
 # ignore the build output
-build/
+#build/
 
 # ignore npm cache
 /node_modules/.cache/
 
 # ignore saved blockchain
-data/
+data/save/
+data/oracle.json
+data/test.json
+
 
 # ignore test dir
-test/
+#test/
 
 # ignore MA contract
 contracts/ManagedAccount.sol

@@ -20,10 +20,11 @@ export default
                     <Button onClick={onTakeFromThisLP}>Take from this LP</Button>
                 </Box>
             </Box>
-            <Flex justifyContent="space-between" width="350px"> 
-                <Box width={1/4}><Text size="14px">{fields[1]}</Text></Box>
-                <Box width={1/4}><Text size="14px">{fields[2]}</Text></Box>
-                <Box width={1/4}><Text size="14px">{fields[3]}</Text></Box>
-                <Box width={1/4}><Text size="14px">{fields[4]}</Text></Box>
+            <Flex justifyContent="space-between" width="450px"> 
+                <Box width={1/5}><Text size="14px">{fields[1] + " Ξ"} </Text></Box>
+                <Box width={1/5}><Text size="14px">{fields[2] + " Ξ"}</Text></Box>
+                <Box width={1/5}><Text size="14px">{fields[3] + " Ξ"}</Text></Box>
+                <Box width={1/5}><Text size="14px">{fields[4] + " Ξ"}</Text></Box>
+                <Box width={1/5}><Text size="14px">{(fields[4] - fields[3])/2 + Math.abs(fields[2] - fields[1])  + " Ξ"}</Text></Box>
             </Flex>
         </Flex>

@@ -10,7 +10,7 @@ export default
     ({label, inputWidth, placeholder, buttonWidth, buttonLabel, justifyContent, value, onChange, onSubmit, ...props}) =>
         <Box
         {...props}>
-            <Text size="12px">{label}</Text>
+            <Text size="14px">{label}</Text>
             <Flex mt="10px" justifyContent={justifyContent}>
                 <Box mr="10px">
                     <Input onChange={({target: {value}}) => onChange(value)} width={inputWidth} placeholder={placeholder} value={value}/>

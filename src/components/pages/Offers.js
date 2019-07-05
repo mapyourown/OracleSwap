@@ -15,6 +15,7 @@ import Triangle from '../basics/Triangle.js'
 import Input from '../basics/Input'
 import Button from '../basics/Button'
 import OffersTable from '../blocks/OffersTable.js';
+import Form from '../basics/Form.js'
 
 class Offers extends Component {
 
@@ -250,11 +251,12 @@ class Offers extends Component {
 
   setMinRM(value) {
     this.setState(state => ({...state, minRM: value}))
+    console.log(value)
   } 
 
   createBook() {
     console.log("create book")
-    const {minRM} = this.state
+    const minRM = this.state.minRM
     console.log(minRM)
     this.contracts[this.contractDict[this.currentContract]].methods.createBook.cacheSend(minRM, {
       from: this.props.accounts[0]
@@ -391,12 +393,11 @@ class Offers extends Component {
                 </Box>
                 <Flex mt="20px">
                     <Flex mr="30px" alignItems="center">
-
                         <Text margin="10px">Current Margin</Text> <Text underline={C}>{bookData.lpMargin} Ξ</Text>
                     </Flex>
-                    <Flex>
-                        <Input label="Create Book" onChange={this.setMinRM} value={this.state.minRM} mr="10px" placeholder="Set min RM"/><Button onClick={this.createBook}>Create Book</Button>
-                    </Flex>
+                </Flex>
+                <Flex mt="15px">
+                    <Form onChange={this.setMinRM} value={this.state.minRM} onSubmit={this.createBook} mb="10px" justifyContent="space-between" buttonWidth="95px"  label="Create A Book" inputWidth="280px" placeholder="Set RM" buttonLabel="Add"/>
                 </Flex>
                 <Flex mt="15px">
                     <Box mr="15px"><Text size="15px" weight="400" color={C}>Margin Rates</Text></Box>
@@ -420,10 +421,10 @@ class Offers extends Component {
                             ({
                                 fields: [
                                     lp,
-                                    books[lp]['totalLong']/1e18 + " Ξ",
-                                    books[lp]['totalShort']/1e18 + " Ξ",
-                                    books[lp]['lpRM']/1e18 + " Ξ",
-                                    (books[lp]['lpMargin']/1e18).toFixed(2) + " Ξ"
+                                    books[lp]['totalLong']/1e18,
+                                    books[lp]['totalShort']/1e18,
+                                    books[lp]['lpRM']/1e18,
+                                    (books[lp]['lpMargin']/1e18).toFixed(2)
                                 ],
                                 onOpenLP: () => this.openLP(lp),
                                 onTakeFromThisLP: () => this.takeFromLP(lp)

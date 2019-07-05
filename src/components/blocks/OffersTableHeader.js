@@ -19,13 +19,14 @@ export default ({order: [by, asc], setOrder}) =>
             <Box width="calc(100% - 600px)" alignItems="flex-end" pt="20px">
                 <Text size="14px">Liquidity Provider</Text>
             </Box>
-            <Box width="350px">
+            <Box width="450px">
                 <Box mb="7px"><Text>Current Balance</Text><br/></Box>                
                 <Flex>
-                    <Field width={1/4} onClick={() => setOrder(3, !asc)}><Text size="14px">Long</Text> {by == 3 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
-                    <Field width={1/4} onClick={() => setOrder(4, !asc)}><Text size="14px">Short</Text> {by == 4 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
-                    <Field width={1/4} onClick={() => setOrder(5, !asc)}><Text size="11px">Required</Text><br/><Text size="11px">Margin</Text> {by == 5 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
-                    <Field width={1/4} onClick={() => setOrder(6, !asc)}><Text size="11px">Actual</Text><br/><Text size="11px">Margin</Text> {by == 6 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
+                    <Field width={1/5} onClick={() => setOrder(3, !asc)}><Text size="14px">Long</Text> {by == 3 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
+                    <Field width={1/5} onClick={() => setOrder(4, !asc)}><Text size="14px">Short</Text> {by == 4 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
+                    <Field width={1/5} onClick={() => setOrder(5, !asc)}><Text size="14px">Required</Text><br/><Text size="14px">Margin</Text> {by == 5 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
+                    <Field width={1/5} onClick={() => setOrder(6, !asc)}><Text size="14px">Actual</Text><br/><Text size="14px">Margin</Text> {by == 6 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
+                    <Field width={1/5} onClick={() => setOrder(6, !asc)}><Text size="14px">Max</Text><br/><Text size="14px">Take</Text> {by == 6 ? <Triangle rotation={!asc ? "180deg" : ""} scale="0.8" fill color="white"/> : null}</Field>
                 </Flex>
             </Box>
         </Flex>
