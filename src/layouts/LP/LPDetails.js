@@ -1,7 +1,6 @@
 import { drizzleConnect } from 'drizzle-react'
 import React, { Component } from 'react'
 import PropTypes from 'prop-types'
-import LPInfo from './LPInfo'
 
 const exampleData = {
   "0x1234567890123456789012345678901234567890" : {
@@ -90,7 +89,7 @@ class LPDetails extends Component {
           </div>  
           <div className="pure-u-1-1">
             <div>
-              <LPInfo contract={stateToContract(this.state.selectedAssetID)} id={this.state.selectedAssetID} lp={this.state.lpAddress}/>
+              
             </div>   
           </div>
         </div>
