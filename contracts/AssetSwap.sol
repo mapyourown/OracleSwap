@@ -67,6 +67,7 @@ contract AssetSwap {
         public
     {
         admins[_admin] = true;
+        feeAddress = _admin;
         
         oracle = Oracle(priceOracle);
         ASSET_ID = assetID;
