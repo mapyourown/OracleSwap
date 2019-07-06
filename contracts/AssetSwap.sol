@@ -3,7 +3,7 @@ pragma solidity ^0.4.25;
 import "./Book.sol";
 import "./Oracle.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-
+/// new
 contract AssetSwap {
     
     using SafeMath for uint;
@@ -220,7 +220,7 @@ contract AssetSwap {
         Book b = Book(books[lp]);
         b.fundlpMargin.value(msg.value)();
         uint newMargin = b.lpMargin();
-        emit LPFundedMargin(newMargin);
+        emit LPFundedMargin(lp, newMargin);
     }
     
     /** Moves value out of the taker margin into the withdraw balance

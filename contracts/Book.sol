@@ -36,6 +36,8 @@ contract Book {
     uint constant TIME_TO_SELF_DESTRUCT = 9 days;
     uint constant TIME_BETWEEN_SETTLES = 4 days;
     uint constant MAX_SUBCONTRACTS = 90;
+    uint constant SIZE_DISC_CUTOFF= 10 ether;
+    uint constant NUM_DISC_CUTOFF = 20;
 
     
     modifier onlyAdmin()
@@ -190,17 +192,17 @@ contract Book {
             totalShortMargin = totalShortMargin.add(RM);
             if (totalShortMargin - totalLongMargin > lpRequiredMargin)
                 lpRequiredMargin = totalShortMargin - totalLongMargin;
-            else 
-                order.takerCloseDiscount = true;
         } else {    // Case 2: taker is short, maker is long
             order.index = shortTakerContracts.length;
             shortTakerContracts.push(id);
             totalLongMargin = totalLongMargin.add(RM);
             if (totalLongMargin - totalShortMargin > lpRequiredMargin)
                 lpRequiredMargin = totalLongMargin - totalShortMargin;
-            else
-                order.takerCloseDiscount = true;
         }
+
+        if ((totalLongMargin + totalShortMargin) > SIZE_DISC_CUTOFF) || (numContract > NUM_DISC_CUTOFF))
+            { order.takerCloseDiscount = true;}
+
         
         subcontracts[id] = order;
         pendingContracts.push(id);

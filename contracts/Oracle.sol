@@ -38,7 +38,7 @@ contract Oracle {
         bytes32 name,
         uint price,
         uint timestamp,
-        uint8 dayNumber,
+        uint8 dayNumber
     );
 
     event SettlePrice(
@@ -46,7 +46,7 @@ contract Oracle {
         bytes32 name,
         uint price,
         uint timestamp,
-        uint8 dayNumber,
+        uint8 dayNumber
     );
 
     event PriceCorrected(
@@ -54,7 +54,7 @@ contract Oracle {
         bytes32 indexed name, 
         uint price,
         uint timestamp,
-        uint8 dayNumber,
+        uint8 dayNumber
     );
     
     /** Contract Constructor
